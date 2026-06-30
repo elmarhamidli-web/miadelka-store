@@ -1,25 +1,15 @@
+import { useI18n } from '../i18n'
+
 interface Props {
   onNavigate: (categoryId?: string) => void
 }
 
-const columns = [
-  {
-    title: 'Shop',
-    links: ['New Collection', 'Baby', 'Girls', 'Boys', 'Shoes', 'Accessories'],
-  },
-  {
-    title: 'Help',
-    links: ['Size Guide', 'Shipping', 'Returns & Exchanges', 'Track Order', 'Contact Us'],
-  },
-  {
-    title: 'Company',
-    links: ['Our Story', 'Sustainability', 'Careers', 'Press', 'Stores'],
-  },
-]
-
 const socials = ['📷', '📘', '🎵', '📌', '▶️']
 
 export function Footer({ onNavigate }: Props) {
+  const { dict } = useI18n()
+  const f = dict.ui.footer
+
   return (
     <footer className="footer">
       <div className="container footer__inner">
@@ -30,10 +20,7 @@ export function Footer({ onNavigate }: Props) {
               TinyMode<span className="logo__accent">Kids</span>
             </span>
           </a>
-          <p>
-            Premium, planet-friendly clothing for tiny adventurers. Designed with love,
-            made to be handed down.
-          </p>
+          <p>{f.tagline}</p>
           <div className="footer__socials">
             {socials.map((s, i) => (
               <a key={i} href="#" className="footer__social" aria-label="Social link">
@@ -43,7 +30,7 @@ export function Footer({ onNavigate }: Props) {
           </div>
         </div>
 
-        {columns.map((col) => (
+        {f.columns.map((col) => (
           <div className="footer__col" key={col.title}>
             <h4>{col.title}</h4>
             <ul>
@@ -57,19 +44,19 @@ export function Footer({ onNavigate }: Props) {
         ))}
 
         <div className="footer__col footer__contact">
-          <h4>Get in touch</h4>
+          <h4>{f.contactTitle}</h4>
           <ul>
-            <li>✉️ hello@tinymode.kids</li>
-            <li>📞 +1 (800) 555-0142</li>
-            <li>📍 14 Maple Lane, Portland, OR</li>
+            {f.contact.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
           </ul>
         </div>
       </div>
 
       <div className="container footer__bottom">
-        <span>© 2026 TinyMode Kids — a design prototype. All rights reserved.</span>
+        <span>{f.rights}</span>
         <div className="footer__pay">
-          <span>🔒 Secure checkout</span>
+          <span>{f.secure}</span>
           <span aria-hidden="true">💳 🅿️ 🍎 🟦</span>
         </div>
       </div>

@@ -1,15 +1,15 @@
 import { motion } from 'framer-motion'
 import { useMemo, useState } from 'react'
-import type { CategoryId, Product } from '../types'
+import type { CategoryId } from '../types'
 import { products } from '../data/products'
 import { categories } from '../data/categories'
 import { ProductCard } from './ProductCard'
+import { useI18n } from '../i18n'
 import { fadeUp, reveal, stagger } from '../lib/motion'
 
 interface Props {
   initialCategory?: CategoryId | 'all'
   searchQuery?: string
-  onOpen: (product: Product) => void
 }
 
 type SortKey = 'featured' | 'price-asc' | 'price-desc' | 'rating'
@@ -21,7 +21,10 @@ const allColors = Array.from(
 const allAges = Array.from(new Set(products.flatMap((p) => p.ages))).sort()
 const PRICE_STEPS = [20, 40, 60, 100]
 
-export function Shop({ initialCategory = 'all', searchQuery = '', onOpen }: Props) {
+export function Shop({ initialCategory = 'all', searchQuery = '' }: Props) {
+  const { dict, formatPrice, plural, categoryName, colorName } = useI18n()
+  const s = dict.ui.shop
+
   const [category, setCategory] = useState<CategoryId | 'all'>(initialCategory)
   const [size, setSize] = useState<string | null>(null)
   const [color, setColor] = useState<string | null>(null)
@@ -80,33 +83,35 @@ export function Shop({ initialCategory = 'all', searchQuery = '', onOpen }: Prop
     (age ? 1 : 0) +
     (maxPrice ? 1 : 0)
 
+  const pieceWord = plural(filtered.length, s.pieces)
+
   return (
     <section className="section shop" id="shop">
       <div className="container">
         <motion.div className="shop__head" {...reveal} variants={fadeUp}>
           <div>
-            <span className="eyebrow">Shop all</span>
+            <span className="eyebrow">{s.eyebrow}</span>
             <h2 className="section-title">
-              {searchQuery ? `Results for “${searchQuery}”` : 'The full collection'}
+              {searchQuery ? `${s.resultsFor} “${searchQuery}”` : s.titleAll}
             </h2>
             <p className="section-sub">
-              {filtered.length} {filtered.length === 1 ? 'piece' : 'pieces'} crafted for comfy, confident little ones.
+              {filtered.length} {pieceWord} {s.countTail}
             </p>
           </div>
           <div className="shop__sortwrap">
             <button
               className="btn btn--ghost shop__filter-toggle"
-              onClick={() => setShowFilters((s) => !s)}
+              onClick={() => setShowFilters((v) => !v)}
             >
-              Filters {activeCount > 0 && <span className="badge-count badge-count--inline">{activeCount}</span>}
+              {s.filters} {activeCount > 0 && <span className="badge-count badge-count--inline">{activeCount}</span>}
             </button>
             <label className="shop__sort">
-              <span>Sort</span>
+              <span>{s.sort}</span>
               <select value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-                <option value="featured">Featured</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="rating">Top rated</option>
+                <option value="featured">{s.sortFeatured}</option>
+                <option value="price-asc">{s.sortPriceAsc}</option>
+                <option value="price-desc">{s.sortPriceDesc}</option>
+                <option value="rating">{s.sortRating}</option>
               </select>
             </label>
           </div>
@@ -115,22 +120,22 @@ export function Shop({ initialCategory = 'all', searchQuery = '', onOpen }: Prop
         <div className="shop__layout">
           <aside className={`filters ${showFilters ? 'is-open' : ''}`}>
             <div className="filters__head">
-              <strong>Filters</strong>
+              <strong>{s.filters}</strong>
               {activeCount > 0 && (
                 <button className="filters__clear" onClick={clearAll}>
-                  Clear all
+                  {s.clearAll}
                 </button>
               )}
             </div>
 
             <div className="filter-group">
-              <h4>Category</h4>
+              <h4>{s.category}</h4>
               <div className="filter-chips">
                 <button
                   className={`pill ${category === 'all' ? 'pill--active' : ''}`}
                   onClick={() => setCategory('all')}
                 >
-                  All
+                  {s.all}
                 </button>
                 {categories.map((c) => (
                   <button
@@ -138,37 +143,37 @@ export function Shop({ initialCategory = 'all', searchQuery = '', onOpen }: Prop
                     className={`pill ${category === c.id ? 'pill--active' : ''}`}
                     onClick={() => setCategory(c.id)}
                   >
-                    {c.emoji} {c.name}
+                    {c.emoji} {categoryName(c.id)}
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="filter-group">
-              <h4>Size</h4>
+              <h4>{s.size}</h4>
               <div className="filter-chips">
-                {allSizes.map((s) => (
+                {allSizes.map((sz) => (
                   <button
-                    key={s}
-                    className={`pill ${size === s ? 'pill--active' : ''}`}
-                    onClick={() => setSize(size === s ? null : s)}
+                    key={sz}
+                    className={`pill ${size === sz ? 'pill--active' : ''}`}
+                    onClick={() => setSize(size === sz ? null : sz)}
                   >
-                    {s}
+                    {sz}
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="filter-group">
-              <h4>Colour</h4>
+              <h4>{s.colour}</h4>
               <div className="filter-dots">
                 {allColors.map((c) => (
                   <button
                     key={c.name}
                     className={`color-dot color-dot--lg ${color === c.name ? 'is-active' : ''}`}
                     style={{ background: c.hex }}
-                    title={c.name}
-                    aria-label={c.name}
+                    title={colorName(c.name)}
+                    aria-label={colorName(c.name)}
                     onClick={() => setColor(color === c.name ? null : c.name)}
                   />
                 ))}
@@ -176,7 +181,7 @@ export function Shop({ initialCategory = 'all', searchQuery = '', onOpen }: Prop
             </div>
 
             <div className="filter-group">
-              <h4>Age</h4>
+              <h4>{s.age}</h4>
               <div className="filter-chips">
                 {allAges.map((a) => (
                   <button
@@ -191,15 +196,15 @@ export function Shop({ initialCategory = 'all', searchQuery = '', onOpen }: Prop
             </div>
 
             <div className="filter-group">
-              <h4>Max price</h4>
+              <h4>{s.maxPrice}</h4>
               <div className="filter-chips">
-                {PRICE_STEPS.map((p) => (
+                {PRICE_STEPS.map((pr) => (
                   <button
-                    key={p}
-                    className={`pill ${maxPrice === p ? 'pill--active' : ''}`}
-                    onClick={() => setMaxPrice(maxPrice === p ? null : p)}
+                    key={pr}
+                    className={`pill ${maxPrice === pr ? 'pill--active' : ''}`}
+                    onClick={() => setMaxPrice(maxPrice === pr ? null : pr)}
                   >
-                    ${'\u2264'}{p}
+                    {'\u2264'} {formatPrice(pr)}
                   </button>
                 ))}
               </div>
@@ -210,9 +215,9 @@ export function Shop({ initialCategory = 'all', searchQuery = '', onOpen }: Prop
             {filtered.length === 0 ? (
               <div className="shop__empty">
                 <span aria-hidden="true">🔍</span>
-                <strong>No matches just yet</strong>
-                <p>Try clearing a filter or two.</p>
-                <button className="btn btn--soft" onClick={clearAll}>Reset filters</button>
+                <strong>{s.emptyTitle}</strong>
+                <p>{s.emptySub}</p>
+                <button className="btn btn--soft" onClick={clearAll}>{s.reset}</button>
               </div>
             ) : (
               <motion.div
@@ -223,7 +228,7 @@ export function Shop({ initialCategory = 'all', searchQuery = '', onOpen }: Prop
                 key={`${category}-${size}-${color}-${age}-${maxPrice}-${sort}-${searchQuery}`}
               >
                 {filtered.map((p) => (
-                  <ProductCard key={p.id} product={p} onOpen={onOpen} />
+                  <ProductCard key={p.id} product={p} />
                 ))}
               </motion.div>
             )}

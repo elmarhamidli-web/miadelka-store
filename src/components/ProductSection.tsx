@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import type { Product } from '../types'
 import { ProductCard } from './ProductCard'
+import { useI18n } from '../i18n'
 import { fadeUp, reveal, stagger } from '../lib/motion'
 
 interface Props {
@@ -9,7 +10,6 @@ interface Props {
   title: string
   subtitle?: string
   products: Product[]
-  onOpen: (product: Product) => void
   onViewAll?: () => void
   tone?: 'default' | 'soft'
 }
@@ -20,10 +20,10 @@ export function ProductSection({
   title,
   subtitle,
   products,
-  onOpen,
   onViewAll,
   tone = 'default',
 }: Props) {
+  const { dict } = useI18n()
   return (
     <section className={`section ${tone === 'soft' ? 'section--soft' : ''}`} id={id}>
       <div className="container">
@@ -35,14 +35,14 @@ export function ProductSection({
           </div>
           {onViewAll && (
             <button className="text-link" onClick={onViewAll}>
-              View all →
+              {dict.ui.viewAll} →
             </button>
           )}
         </motion.div>
 
         <motion.div className="product-grid" variants={stagger} {...reveal}>
           {products.map((p) => (
-            <ProductCard key={p.id} product={p} onOpen={onOpen} />
+            <ProductCard key={p.id} product={p} />
           ))}
         </motion.div>
       </div>

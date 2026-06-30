@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { CartItem, Product } from '../types'
+import { useI18n } from '../i18n'
 
 interface Toast {
   id: number
@@ -37,6 +38,7 @@ const StoreContext = createContext<StoreContextValue | null>(null)
 const lineKey = (id: string, size: string, color: string) => `${id}__${size}__${color}`
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const { dict, fmt, productName } = useI18n()
   const [cart, setCart] = useState<CartItem[]>([])
   const [wishlist, setWishlist] = useState<string[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -66,9 +68,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         return [...prev, { product, size, color, quantity }]
       })
-      pushToast(`${product.name} added to cart`, '🛒')
+      pushToast(fmt(dict.ui.toast.added, { name: productName(product.id, product.name) }), '🛒')
     },
-    [pushToast],
+    [pushToast, fmt, dict, productName],
   )
 
   const removeFromCart = useCallback((id: string, size: string, color: string) => {
@@ -100,14 +102,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     (productId: string) => {
       setWishlist((prev) => {
         if (prev.includes(productId)) {
-          pushToast('Removed from wishlist', '🤍')
+          pushToast(dict.ui.toast.wishOff, '🤍')
           return prev.filter((id) => id !== productId)
         }
-        pushToast('Saved to wishlist', '💖')
+        pushToast(dict.ui.toast.wishOn, '💖')
         return [...prev, productId]
       })
     },
-    [pushToast],
+    [pushToast, dict],
   )
 
   const isWishlisted = useCallback(

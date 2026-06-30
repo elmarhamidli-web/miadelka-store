@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { useStore } from '../context/StoreContext'
+import { useI18n } from '../i18n'
 import { fadeUp, reveal } from '../lib/motion'
 
 export function Newsletter() {
   const { pushToast } = useStore()
+  const { dict } = useI18n()
+  const n = dict.ui.newsletter
   const [email, setEmail] = useState('')
   const [done, setDone] = useState(false)
 
@@ -12,7 +15,7 @@ export function Newsletter() {
     e.preventDefault()
     if (!email) return
     setDone(true)
-    pushToast('Welcome to the family! Check your inbox 💌', '🎉')
+    pushToast(n.toast, '🎉')
     setEmail('')
     window.setTimeout(() => setDone(false), 3000)
   }
@@ -22,27 +25,22 @@ export function Newsletter() {
       <div className="container">
         <motion.div className="newsletter" {...reveal} variants={fadeUp}>
           <span className="newsletter__emoji" aria-hidden="true">💌</span>
-          <h2 className="newsletter__title">Join the TinyMode family</h2>
-          <p className="newsletter__sub">
-            Get 10% off your first order plus early access to new drops, parenting tips
-            and pastel-perfect inspiration.
-          </p>
+          <h2 className="newsletter__title">{n.title}</h2>
+          <p className="newsletter__sub">{n.sub}</p>
           <form className="newsletter__form" onSubmit={submit}>
             <input
               type="email"
               required
-              placeholder="you@email.com"
+              placeholder={n.placeholder}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              aria-label="Email address"
+              aria-label={n.placeholder}
             />
             <button className="btn btn--primary" type="submit">
-              {done ? 'Subscribed ✓' : 'Get 10% off'}
+              {done ? n.done : n.cta}
             </button>
           </form>
-          <small className="newsletter__fine">
-            No spam, ever. Unsubscribe anytime. It's a prototype 🙂
-          </small>
+          <small className="newsletter__fine">{n.fine}</small>
         </motion.div>
       </div>
     </section>

@@ -1,0 +1,322 @@
+import type { Dictionary } from './types'
+
+export const cs: Dictionary = {
+  localeName: 'Čeština',
+  flag: '🇨🇿',
+  currency: { symbol: 'Kč', rate: 24, position: 'after', thousand: ' ' },
+  ui: {
+    announce: '✨ Doprava zdarma nad 1 500 Kč · Snadné vrácení do 30 dnů ✨',
+    search: {
+      placeholder: 'Hledejte mikiny, šaty, tenisky…',
+      submit: 'Hledat',
+      aria: 'Hledat',
+    },
+    nav: {
+      menuOpen: 'Otevřít menu',
+      menuClose: 'Zavřít menu',
+      wishlist: 'Oblíbené',
+      cartOpen: 'Otevřít košík',
+      cartClose: 'Zavřít košík',
+      language: 'Jazyk',
+    },
+    hero: {
+      pill: '🌿 Nová jarní kolekce 2026',
+      titleLine1: 'Měkké, bezpečné a',
+      titleAccent: 'nesmírně stylové',
+      titleLine2: 'oblečení pro nejmenší',
+      sub: 'Prémiové oblečení z biobavlny pro malé dobrodruhy — šetrné k jemné pokožce, ohleduplné k planetě a stvořené k milování (a dědění).',
+      shop: 'Nakupovat novou kolekci',
+      explore: 'Prozkoumat kategorie',
+      stat1: '50k+',
+      stat1Label: 'Spokojených rodin',
+      stat2: '4,9★',
+      stat2Label: '12k recenzí',
+      stat3: '100%',
+      stat3Label: 'Biobavlna',
+      shipping: 'Doprava zdarma a rychle',
+      bestsellerTag: 'Nejprodávanější',
+    },
+    categoriesSection: {
+      eyebrow: 'Nakupovat podle kategorie',
+      title: 'Najděte jejich nového favorita',
+      sub: 'Od prvního mazlení po hrdiny z hřiště — pečlivě vybrané kolekce pro každý věk.',
+    },
+    featured: {
+      eyebrow: 'Vybráno pro vás',
+      title: 'Oblíbené kousky',
+      sub: 'Kousky, ke kterým se rodiče stále vracejí — měkké, odolné a roztomilé.',
+    },
+    bestsellers: {
+      eyebrow: 'Miláčci zákazníků',
+      title: 'Nejprodávanější tento týden',
+      sub: 'Milované tisíci dětí a jejich rodičů.',
+    },
+    seasonal: {
+      eyebrow: 'Jaro 2026',
+      title: 'Sezónní kolekce',
+      sub: 'Vzdušné vrstvy a styly připravené na slunce pro teplejší dny.',
+    },
+    viewAll: 'Zobrazit vše',
+    promo: {
+      tag: 'Omezená nabídka',
+      titleA: 'Nová jarní kolekce',
+      titleHighlight: 'sleva až 30 %',
+      sub: 'Svěží pastely, vzdušné bavlny a kousky stvořené k protáčení. Rozkvěťte do nové sezóny s TinyMode Kids.',
+      cta: 'Nakoupit ve slevě',
+      days: 'dní',
+      hrs: 'hod',
+      min: 'min',
+      sec: 'sek',
+    },
+    benefits: {
+      organic: {
+        title: 'Biobavlna',
+        text: 'Vlákna s certifikací GOTS bez pesticidů, šetrná k jemné pokožce.',
+      },
+      delivery: {
+        title: 'Rychlé doručení',
+        text: 'Uhlíkově neutrální doprava za 2–4 dny, zdarma nad 1 500 Kč.',
+      },
+      returns: {
+        title: 'Snadné vrácení',
+        text: 'Rozmysleli jste si to? Pohodlné vrácení bez otázek do 30 dnů.',
+      },
+      payment: {
+        title: 'Bezpečná platba',
+        text: 'Šifrování na bankovní úrovni a důvěryhodná pokladna.',
+      },
+    },
+    reviewsSection: {
+      eyebrow: 'Milováno rodiči',
+      title: '50 000+ spokojených malých zákazníků',
+      sub: 'Skutečná slova rodin, které oblékají své nejmenší do TinyMode.',
+    },
+    newsletter: {
+      title: 'Přidejte se k rodině TinyMode',
+      sub: 'Získejte 10% slevu na první objednávku a předběžný přístup k novinkám, tipům pro rodiče a pastelové inspiraci.',
+      placeholder: 'vas@email.cz',
+      cta: 'Získat 10% slevu',
+      done: 'Přihlášeno ✓',
+      fine: 'Žádný spam, nikdy. Odhlásit se můžete kdykoli. Je to prototyp 🙂',
+      toast: 'Vítejte v rodině! Zkontrolujte schránku 💌',
+    },
+    shop: {
+      eyebrow: 'Nakupovat vše',
+      titleAll: 'Celá kolekce',
+      resultsFor: 'Výsledky pro',
+      countTail: 'stvořených pro pohodlné a sebevědomé nejmenší.',
+      pieces: { one: 'kousek', few: 'kousky', many: 'kousků' },
+      filters: 'Filtry',
+      clearAll: 'Vymazat vše',
+      all: 'Vše',
+      category: 'Kategorie',
+      size: 'Velikost',
+      colour: 'Barva',
+      age: 'Věk',
+      maxPrice: 'Max. cena',
+      sort: 'Řadit',
+      sortFeatured: 'Doporučené',
+      sortPriceAsc: 'Cena: od nejnižší',
+      sortPriceDesc: 'Cena: od nejvyšší',
+      sortRating: 'Nejlépe hodnocené',
+      emptyTitle: 'Zatím žádné výsledky',
+      emptySub: 'Zkuste zrušit jeden či dva filtry.',
+      reset: 'Resetovat filtry',
+    },
+    card: {
+      view: 'Zobrazit produkt',
+      addAria: 'Přidat {name} do košíku',
+      wishAdd: 'Přidat do oblíbených',
+      wishRemove: 'Odebrat z oblíbených',
+    },
+    badges: { Bestseller: 'Nejprodávanější', New: 'Novinka' },
+    cart: {
+      title: 'Váš košík',
+      addMore: 'Přidejte ještě {amount} pro dopravu zdarma 🚚',
+      freeUnlocked: '🎉 Máte dopravu zdarma!',
+      emptyTitle: 'Váš košík je prázdný',
+      emptySub: 'Přidejte pár roztomilých kousků a začněte.',
+      continue: 'Pokračovat v nákupu',
+      subtotal: 'Mezisoučet',
+      note: 'Doprava a daně se spočítají u pokladny.',
+      checkout: 'K pokladně',
+      clear: 'Vyprázdnit košík',
+      checkoutToast: 'Pokladna je prototyp — nic nebylo účtováno 💖',
+      sizeLabel: 'Velikost',
+      decrease: 'Snížit množství',
+      increase: 'Zvýšit množství',
+      remove: 'Odebrat',
+    },
+    product: {
+      back: 'Zpět na kolekci',
+      reviews: 'recenzí',
+      save: 'Ušetříte {amount}',
+      colour: 'Barva',
+      size: 'Velikost',
+      quantity: 'Množství',
+      addToCart: 'Přidat do košíku',
+      deliveryInfo: 'Doprava zdarma nad 1 500 Kč · odeslání za 2–4 dny',
+      returnsInfo: 'Snadné vrácení a výměna do 30 dnů',
+      similar: 'Mohlo by se vám líbit',
+      notFoundTitle: 'Produkt nenalezen',
+      notFoundSub: 'Tento kousek se nám nepodařilo najít.',
+      backHome: 'Zpět na domovskou stránku',
+    },
+    footer: {
+      tagline:
+        'Prémiové oblečení šetrné k planetě pro malé dobrodruhy. Navrženo s láskou, stvořené k dědění.',
+      contactTitle: 'Kontaktujte nás',
+      contact: ['✉️ hello@tinymode.kids', '📞 +420 800 555 0142', '📍 Maple Lane 14, Praha'],
+      secure: '🔒 Bezpečná pokladna',
+      rights: '© 2026 TinyMode Kids — designový prototyp. Všechna práva vyhrazena.',
+      columns: [
+        {
+          title: 'Nakupovat',
+          links: ['Nová kolekce', 'Miminka', 'Holky', 'Kluci', 'Boty', 'Doplňky'],
+        },
+        {
+          title: 'Pomoc',
+          links: ['Tabulka velikostí', 'Doprava', 'Vrácení a výměny', 'Sledovat objednávku', 'Kontakt'],
+        },
+        {
+          title: 'Společnost',
+          links: ['Náš příběh', 'Udržitelnost', 'Kariéra', 'Tisk', 'Prodejny'],
+        },
+      ],
+    },
+    toast: {
+      added: '{name} přidáno do košíku',
+      wishOn: 'Uloženo do oblíbených',
+      wishOff: 'Odebráno z oblíbených',
+    },
+    colors: {
+      Blush: 'Růžová',
+      Cream: 'Krémová',
+      Sky: 'Nebesky modrá',
+      Rainbow: 'Duhová',
+      Sunset: 'Západ slunce',
+      Mint: 'Mátová',
+      Ocean: 'Oceánová',
+      Forest: 'Lesní zelená',
+      Sand: 'Písková',
+      Lavender: 'Levandulová',
+      Cloud: 'Obláčková',
+      Peach: 'Broskvová',
+      Meadow: 'Luční zelená',
+      Butter: 'Máslová',
+      Coral: 'Korálová',
+      Petal: 'Plátková',
+      Lemon: 'Citronová',
+      Midnight: 'Půlnoční modř',
+      Berry: 'Bobulová',
+      Pine: 'Borovicová',
+      Sunbeam: 'Sluneční',
+      Caramel: 'Karamelová',
+      Sage: 'Šalvějová',
+      'Washed Blue': 'Sepraná modrá',
+      Ecru: 'Ecru',
+      Mixed: 'Mix',
+      Pastel: 'Pastelová',
+    },
+  },
+  categories: {
+    baby: { name: 'Miminka', tagline: '0–24 měsíců' },
+    girls: { name: 'Holky', tagline: '2–12 let' },
+    boys: { name: 'Kluci', tagline: '2–12 let' },
+    shoes: { name: 'Boty', tagline: 'První krůčky' },
+    accessories: { name: 'Doplňky', tagline: 'Dotek na závěr' },
+    'new-collection': { name: 'Nová kolekce', tagline: 'Čerstvé novinky' },
+  },
+  products: {
+    'soft-cotton-baby-set': {
+      name: 'Měkká bavlněná souprava pro miminka',
+      description:
+        'Hebká dvoudílná souprava z biobavlny s certifikací GOTS. Jemné ploché švy a široký obálkový výstřih usnadňují oblékání i těch nejneposednějších.',
+      material: '100% biobavlna, žakárový úplet 230 g/m²',
+    },
+    'rainbow-hoodie': {
+      name: 'Duhová mikina',
+      description:
+        'Útulná mikina z česaného fleecu s veselou duhovou aplikací, klokaní kapsou a měkkou kapucí podšitou žerzejem. Navržená pro vrstvení přes cokoli.',
+      material: '85% biobavlna, 15% recyklovaný polyesterový fleece',
+    },
+    'little-explorer-jacket': {
+      name: 'Bunda Malý objevitel',
+      description:
+        'Voděodolná bunda stvořená pro skákání do louží. Fleecem podšité kapsy, reflexní prvky a skládací kapuce udrží objevitele v teple a na očích.',
+      material: 'Recyklovaný polyester, výplň bez peří z odpovědných zdrojů',
+    },
+    'cozy-kids-pajamas': {
+      name: 'Útulné dětské pyžamo',
+      description:
+        'Snové pyžamo s dlouhým rukávem z hebké bavlny s hvězdným potiskem a přiléhavými žebrovanými manžetami. Certifikace OEKO-TEX pro citlivou pokožku.',
+      material: '95% biobavlna, 5% elastanové žebrování',
+    },
+    'organic-cotton-tshirt': {
+      name: 'Tričko z biobavlny',
+      description:
+        'Každodenní hrdina. Předeprané proti srážení, s volným střihem a bezešvým výstřihem bez visačky, který nikdy nedráždí.',
+      material: '100% česaná biobavlna, 180 g/m²',
+    },
+    'mini-sneakers': {
+      name: 'Mini tenisky',
+      description:
+        'Lehoučké první tenisky s pružnou podrážkou, snadným zapínáním na dva pásky a prodyšnou síťovinou. Stvořené, aby stačily rušným nožkám.',
+      material: 'Svršek z recyklované síťoviny, podrážka z přírodního kaučuku',
+    },
+    'summer-dress': {
+      name: 'Letní šaty',
+      description:
+        'Šaty na protáčení s volány ze vzdušné bavlněné voálové tkaniny a skrytými kalhotkami pro pohodlnou hru. Podšitý živůtek a nastavitelná ramínka.',
+      material: '100% bavlněný voál, podšitý živůtek',
+    },
+    'warm-winter-coat': {
+      name: 'Teplý zimní kabát',
+      description:
+        'Hřejivý termo kabát s kapucí podšitou beránkem, překládacími rukavicemi pro nejmenší velikosti a větru odolnou légou. Připravený na opravdovou zimu.',
+      material: 'Recyklovaný polyester, termo výplň, beránková podšívka',
+    },
+    'sunshine-bucket-hat': {
+      name: 'Sluneční klobouček',
+      description:
+        'Oboustranný klobouček s UPF 50+ a stahovací šňůrkou pod bradou, který drží i za větru. Dva vzhledy v jednom pro dvojnásobnou zábavu.',
+      material: '100% bavlněný kepr, UPF 50+',
+    },
+    'cuddle-knit-cardigan': {
+      name: 'Hebký pletený svetřík',
+      description:
+        'Svetřík z hrubého úpletu hebký jako rodinné dědictví s dřevěnými knoflíky a volným boxy střihem, který krásně vrství po celý rok.',
+      material: 'Úplet ze směsi biobavlny a bambusu',
+    },
+    'star-stripe-socks': {
+      name: 'Ponožky s hvězdami a proužky',
+      description:
+        'Radostné balení 5 párů ponožek s protiskluzovou podrážkou v kombinaci hvězd a proužků. Bezešvé špičky udrží malé prstíky spokojené.',
+      material: 'Směs biobavlny, protiskluzové podrážky',
+    },
+    'denim-overalls': {
+      name: 'Malé džínové lacláče',
+      description:
+        'Měkké lacláče ze sepraného denimu s nastavitelnými ramínky, prostornou přední kapsou a zesílenými koleny pro pořádné dobrodružství.',
+      material: 'Biobavlněný denim s příměsí elastanu',
+    },
+  },
+  reviews: {
+    r1: {
+      location: 'Lisabon, PT',
+      text: 'Biobavlna je neuvěřitelně měkká — moje dcera má citlivou pokožku a tohle je jediné oblečení, které ji nikdy nedráždí. Nádherná kvalita.',
+    },
+    r2: {
+      location: 'Manchester, UK',
+      text: 'Objednali jsme bundu Malý objevitel pro naše dvojčata. Vyprali jsme ji už tucetkrát a pořád vypadá jako nová. Stojí za každou korunu.',
+    },
+    r3: {
+      location: 'Berlín, DE',
+      text: 'Doručení bylo bleskové a obal nádherný a bez plastů. Celý zážitek působil prémiově od začátku do konce.',
+    },
+    r4: {
+      location: 'Kodaň, DK',
+      text: 'Konečně dětská značka, která vypadá tak dobře, jak je příjemná. Barvy jsou jemné a moderní — pokaždé sklízím komplimenty.',
+    },
+  },
+}

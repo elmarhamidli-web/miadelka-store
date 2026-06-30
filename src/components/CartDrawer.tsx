@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../context/StoreContext'
+import { useI18n } from '../i18n'
 import { CloseIcon, MinusIcon, PlusIcon, TrashIcon, ArrowIcon } from './icons'
 
 const FREE_SHIP = 60
@@ -16,6 +17,8 @@ export function CartDrawer() {
     pushToast,
     clearCart,
   } = useStore()
+  const { dict, fmt, formatPrice, productName, colorName } = useI18n()
+  const c = dict.ui.cart
 
   const remaining = Math.max(0, FREE_SHIP - subtotal)
   const progress = Math.min(100, (subtotal / FREE_SHIP) * 100)
@@ -37,11 +40,11 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 36 }}
-            aria-label="Shopping cart"
+            aria-label={c.title}
           >
             <header className="cart__head">
-              <h3>Your cart {cartCount > 0 && <span>({cartCount})</span>}</h3>
-              <button className="icon-btn" onClick={closeCart} aria-label="Close cart">
+              <h3>{c.title} {cartCount > 0 && <span>({cartCount})</span>}</h3>
+              <button className="icon-btn" onClick={closeCart} aria-label={dict.ui.nav.cartClose}>
                 <CloseIcon />
               </button>
             </header>
@@ -49,9 +52,9 @@ export function CartDrawer() {
             {cart.length > 0 && (
               <div className="cart__ship">
                 {remaining > 0 ? (
-                  <span>Add <strong>${remaining}</strong> more for free shipping 🚚</span>
+                  <span>{fmt(c.addMore, { amount: formatPrice(remaining) })}</span>
                 ) : (
-                  <span>🎉 You've unlocked free shipping!</span>
+                  <span>{c.freeUnlocked}</span>
                 )}
                 <div className="cart__ship-bar">
                   <motion.div
@@ -67,10 +70,10 @@ export function CartDrawer() {
               {cart.length === 0 ? (
                 <div className="cart__empty">
                   <span aria-hidden="true">🛒</span>
-                  <strong>Your cart is feeling light</strong>
-                  <p>Add some adorable pieces to get started.</p>
+                  <strong>{c.emptyTitle}</strong>
+                  <p>{c.emptySub}</p>
                   <button className="btn btn--primary" onClick={closeCart}>
-                    Continue shopping
+                    {c.continue}
                   </button>
                 </div>
               ) : (
@@ -92,9 +95,9 @@ export function CartDrawer() {
                         <span aria-hidden="true">{item.product.emoji}</span>
                       </div>
                       <div className="cart-item__info">
-                        <strong>{item.product.name}</strong>
+                        <strong>{productName(item.product.id, item.product.name)}</strong>
                         <span className="cart-item__variant">
-                          {item.color} · Size {item.size}
+                          {colorName(item.color)} · {c.sizeLabel} {item.size}
                         </span>
                         <div className="cart-item__row">
                           <div className="qty">
@@ -102,7 +105,7 @@ export function CartDrawer() {
                               onClick={() =>
                                 updateQuantity(item.product.id, item.size, item.color, item.quantity - 1)
                               }
-                              aria-label="Decrease quantity"
+                              aria-label={c.decrease}
                             >
                               <MinusIcon />
                             </button>
@@ -111,20 +114,20 @@ export function CartDrawer() {
                               onClick={() =>
                                 updateQuantity(item.product.id, item.size, item.color, item.quantity + 1)
                               }
-                              aria-label="Increase quantity"
+                              aria-label={c.increase}
                             >
                               <PlusIcon />
                             </button>
                           </div>
                           <span className="cart-item__price">
-                            ${item.product.price * item.quantity}
+                            {formatPrice(item.product.price * item.quantity)}
                           </span>
                         </div>
                       </div>
                       <button
                         className="cart-item__remove"
                         onClick={() => removeFromCart(item.product.id, item.size, item.color)}
-                        aria-label={`Remove ${item.product.name}`}
+                        aria-label={c.remove}
                       >
                         <TrashIcon />
                       </button>
@@ -137,22 +140,22 @@ export function CartDrawer() {
             {cart.length > 0 && (
               <footer className="cart__foot">
                 <div className="cart__subtotal">
-                  <span>Subtotal</span>
-                  <strong>${subtotal}</strong>
+                  <span>{c.subtotal}</span>
+                  <strong>{formatPrice(subtotal)}</strong>
                 </div>
-                <p className="cart__note">Shipping & taxes calculated at checkout.</p>
+                <p className="cart__note">{c.note}</p>
                 <button
                   className="btn btn--primary btn--full btn--lg"
-                  onClick={() => pushToast('Checkout is a prototype — nothing was charged 💖', '🔒')}
+                  onClick={() => pushToast(c.checkoutToast, '🔒')}
                 >
-                  Checkout <ArrowIcon />
+                  {c.checkout} <ArrowIcon />
                 </button>
                 <div className="cart__foot-row">
                   <button className="btn btn--soft" onClick={closeCart}>
-                    Continue shopping
+                    {c.continue}
                   </button>
                   <button className="cart__clear" onClick={clearCart}>
-                    Clear cart
+                    {c.clear}
                   </button>
                 </div>
               </footer>
