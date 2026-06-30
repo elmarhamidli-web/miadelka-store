@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useStore } from '../context/StoreContext'
+import { useI18n } from '../i18n'
 import { categories } from '../data/categories'
+import { LanguageSwitcher } from './LanguageSwitcher'
 import {
   CartIcon,
   HeartIcon,
@@ -17,6 +19,7 @@ interface Props {
 
 export function Header({ onNavigate, onSearch }: Props) {
   const { cartCount, wishlist, openCart } = useStore()
+  const { dict, categoryName } = useI18n()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -30,7 +33,6 @@ export function Header({ onNavigate, onSearch }: Props) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Animate cart icon whenever count changes
   useEffect(() => {
     if (cartCount === 0) return
     setBump(true)
@@ -46,16 +48,14 @@ export function Header({ onNavigate, onSearch }: Props) {
 
   return (
     <>
-      <div className="announce">
-        ✨ Free carbon-neutral delivery over $60 · Easy 30-day returns ✨
-      </div>
+      <div className="announce">{dict.ui.announce}</div>
 
       <header className={`header ${scrolled ? 'is-scrolled' : ''}`}>
         <div className="container header__inner">
           <button
             className="header__burger"
             onClick={() => setMenuOpen(true)}
-            aria-label="Open menu"
+            aria-label={dict.ui.nav.menuOpen}
           >
             <MenuIcon />
           </button>
@@ -77,22 +77,23 @@ export function Header({ onNavigate, onSearch }: Props) {
           <nav className="header__nav" aria-label="Primary">
             {categories.map((c) => (
               <button key={c.id} className="nav-link" onClick={() => onNavigate(c.id)}>
-                {c.name}
+                {categoryName(c.id)}
               </button>
             ))}
           </nav>
 
           <div className="header__actions">
+            <LanguageSwitcher />
             <button
               className="icon-btn"
-              aria-label="Search"
+              aria-label={dict.ui.search.aria}
               onClick={() => setSearchOpen((s) => !s)}
             >
               <SearchIcon />
             </button>
             <button
               className="icon-btn header__wish"
-              aria-label="Wishlist"
+              aria-label={dict.ui.nav.wishlist}
               onClick={() => onNavigate()}
             >
               <HeartIcon />
@@ -100,7 +101,7 @@ export function Header({ onNavigate, onSearch }: Props) {
             </button>
             <motion.button
               className="icon-btn"
-              aria-label="Open cart"
+              aria-label={dict.ui.nav.cartOpen}
               onClick={openCart}
               animate={bump ? { scale: [1, 1.3, 0.92, 1] } : {}}
               transition={{ duration: 0.45 }}
@@ -125,12 +126,12 @@ export function Header({ onNavigate, onSearch }: Props) {
                 <input
                   autoFocus
                   type="search"
-                  placeholder="Search for hoodies, dresses, sneakers…"
+                  placeholder={dict.ui.search.placeholder}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
                 <button type="submit" className="btn btn--primary">
-                  Search
+                  {dict.ui.search.submit}
                 </button>
               </form>
             </motion.div>
@@ -138,7 +139,6 @@ export function Header({ onNavigate, onSearch }: Props) {
         </AnimatePresence>
       </header>
 
-      {/* Mobile drawer menu */}
       <AnimatePresence>
         {menuOpen && (
           <>
@@ -160,7 +160,11 @@ export function Header({ onNavigate, onSearch }: Props) {
                 <span className="logo__text">
                   TinyMode<span className="logo__accent">Kids</span>
                 </span>
-                <button className="icon-btn" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+                <button
+                  className="icon-btn"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label={dict.ui.nav.menuClose}
+                >
                   <CloseIcon />
                 </button>
               </div>
@@ -173,10 +177,13 @@ export function Header({ onNavigate, onSearch }: Props) {
                       setMenuOpen(false)
                     }}
                   >
-                    <span aria-hidden="true">{c.emoji}</span> {c.name}
+                    <span aria-hidden="true">{c.emoji}</span> {categoryName(c.id)}
                   </button>
                 ))}
               </nav>
+              <div className="mobile-menu__lang">
+                <LanguageSwitcher />
+              </div>
             </motion.aside>
           </>
         )}

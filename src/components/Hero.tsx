@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { ArrowIcon } from './icons'
+import { useI18n } from '../i18n'
 import { fadeUp, stagger } from '../lib/motion'
 
 interface Props {
@@ -16,6 +17,9 @@ const floaters = [
 ]
 
 export function Hero({ onShop, onExplore }: Props) {
+  const { dict, formatPrice, productName } = useI18n()
+  const h = dict.ui.hero
+
   return (
     <section className="hero" id="top">
       <div className="hero__blob hero__blob--1" />
@@ -48,38 +52,38 @@ export function Hero({ onShop, onExplore }: Props) {
           animate="show"
         >
           <motion.span className="hero__pill" variants={fadeUp}>
-            🌿 New Spring Collection 2026
+            {h.pill}
           </motion.span>
           <motion.h1 className="hero__title" variants={fadeUp}>
-            Soft, safe & seriously<br />
-            <span className="hero__title-accent">stylish</span> little outfits
+            {h.titleLine1}<br />
+            <span className="hero__title-accent">{h.titleAccent}</span>{' '}
+            {h.titleLine2}
           </motion.h1>
           <motion.p className="hero__sub" variants={fadeUp}>
-            Premium organic-cotton clothing designed for tiny adventurers — gentle on
-            delicate skin, kind to the planet, and made to be loved (and handed down).
+            {h.sub}
           </motion.p>
           <motion.div className="hero__cta" variants={fadeUp}>
             <button className="btn btn--primary btn--lg" onClick={onShop}>
-              Shop New Collection <ArrowIcon />
+              {h.shop} <ArrowIcon />
             </button>
             <button className="btn btn--ghost btn--lg" onClick={onExplore}>
-              Explore Categories
+              {h.explore}
             </button>
           </motion.div>
           <motion.div className="hero__stats" variants={fadeUp}>
             <div>
-              <strong>50k+</strong>
-              <span>Happy families</span>
+              <strong>{h.stat1}</strong>
+              <span>{h.stat1Label}</span>
             </div>
             <div className="hero__stats-divider" />
             <div>
-              <strong>4.9★</strong>
-              <span>12k reviews</span>
+              <strong>{h.stat2}</strong>
+              <span>{h.stat2Label}</span>
             </div>
             <div className="hero__stats-divider" />
             <div>
-              <strong>100%</strong>
-              <span>Organic cotton</span>
+              <strong>{h.stat3}</strong>
+              <span>{h.stat3Label}</span>
             </div>
           </motion.div>
         </motion.div>
@@ -98,8 +102,8 @@ export function Hero({ onShop, onExplore }: Props) {
             <span className="hero__card-emoji">🌈</span>
             <span className="discount-badge">-30%</span>
             <div className="hero__card-info">
-              <strong>Rainbow Hoodie</strong>
-              <span>$39 · Bestseller</span>
+              <strong>{productName('rainbow-hoodie', 'Rainbow Hoodie')}</strong>
+              <span>{formatPrice(39)} · {h.bestsellerTag}</span>
             </div>
           </motion.div>
 
@@ -110,8 +114,8 @@ export function Hero({ onShop, onExplore }: Props) {
           >
             <span>🧦</span>
             <div>
-              <strong>Cosy Socks</strong>
-              <span>$12</span>
+              <strong>{productName('star-stripe-socks', 'Socks')}</strong>
+              <span>{formatPrice(12)}</span>
             </div>
           </motion.div>
 
@@ -122,8 +126,8 @@ export function Hero({ onShop, onExplore }: Props) {
           >
             <span>👟</span>
             <div>
-              <strong>Mini Sneakers</strong>
-              <span>$42</span>
+              <strong>{productName('mini-sneakers', 'Mini Sneakers')}</strong>
+              <span>{formatPrice(42)}</span>
             </div>
           </motion.div>
 
@@ -132,7 +136,7 @@ export function Hero({ onShop, onExplore }: Props) {
             animate={{ y: [0, 8, 0] }}
             transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
           >
-            🚚 Free fast delivery
+            🚚 {h.shipping}
           </motion.div>
         </motion.div>
       </div>

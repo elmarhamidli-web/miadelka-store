@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { categories } from '../data/categories'
+import { useI18n } from '../i18n'
 import { fadeUp, popIn, reveal, stagger } from '../lib/motion'
 
 interface Props {
@@ -7,24 +8,19 @@ interface Props {
 }
 
 export function Categories({ onSelect }: Props) {
+  const { dict, categoryName, categoryTagline } = useI18n()
   return (
     <section className="section" id="categories">
       <div className="container">
         <motion.div className="section-head" {...reveal} variants={fadeUp}>
           <div>
-            <span className="eyebrow">Shop by category</span>
-            <h2 className="section-title">Find their new favourite</h2>
-            <p className="section-sub">
-              From first cuddles to playground heroes — curated edits for every age and stage.
-            </p>
+            <span className="eyebrow">{dict.ui.categoriesSection.eyebrow}</span>
+            <h2 className="section-title">{dict.ui.categoriesSection.title}</h2>
+            <p className="section-sub">{dict.ui.categoriesSection.sub}</p>
           </div>
         </motion.div>
 
-        <motion.div
-          className="cat-grid"
-          variants={stagger}
-          {...reveal}
-        >
+        <motion.div className="cat-grid" variants={stagger} {...reveal}>
           {categories.map((c) => (
             <motion.button
               key={c.id}
@@ -37,8 +33,8 @@ export function Categories({ onSelect }: Props) {
             >
               <span className="cat-card__emoji" aria-hidden="true">{c.emoji}</span>
               <div className="cat-card__text">
-                <strong>{c.name}</strong>
-                <span>{c.tagline}</span>
+                <strong>{categoryName(c.id)}</strong>
+                <span>{categoryTagline(c.id)}</span>
               </div>
               <span className="cat-card__arrow" aria-hidden="true">→</span>
             </motion.button>
