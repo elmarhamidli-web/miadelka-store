@@ -10,10 +10,10 @@ interface Props {
 }
 
 const floaters = [
-  { emoji: '🧸', x: '6%', y: '18%', delay: 0, size: 54 },
+  { emoji: '🧸', x: '44%', y: '6%', delay: 0, size: 54 },
   { emoji: '🌈', x: '84%', y: '12%', delay: 0.4, size: 48 },
   { emoji: '⭐', x: '90%', y: '64%', delay: 0.8, size: 38 },
-  { emoji: '🎈', x: '3%', y: '70%', delay: 0.2, size: 44 },
+  { emoji: '🎈', x: '2%', y: '78%', delay: 0.2, size: 44 },
   { emoji: '☁️', x: '70%', y: '4%', delay: 0.6, size: 40 },
 ]
 

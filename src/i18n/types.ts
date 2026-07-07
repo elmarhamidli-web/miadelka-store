@@ -135,6 +135,31 @@ export interface Dictionary {
       notFoundSub: string
       backHome: string
     }
+    checkout: {
+      title: string
+      contact: string
+      name: string
+      email: string
+      phone: string
+      shippingAddr: string
+      street: string
+      city: string
+      zip: string
+      note: string
+      payment: string
+      cod: string
+      codNote: string
+      card: string
+      cardSoon: string
+      summary: string
+      placeOrder: string
+      placing: string
+      successTitle: string
+      successSub: string
+      backToShop: string
+      errorGeneric: string
+      emptyCart: string
+    }
     footer: {
       tagline: string
       contactTitle: string

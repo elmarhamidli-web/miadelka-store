@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
 import { useProducts } from '../data/productsStore'
@@ -16,11 +17,11 @@ export function CartDrawer() {
     removeFromCart,
     subtotal,
     cartCount,
-    pushToast,
     clearCart,
   } = useStore()
   const { dict, fmt, formatPrice, productName, colorName } = useI18n()
   const { settings } = useProducts()
+  const navigate = useNavigate()
   const c = dict.ui.cart
 
   const FREE_SHIP = settings.free_over_czk / CZK
@@ -172,7 +173,10 @@ export function CartDrawer() {
                 <p className="cart__note">{c.note}</p>
                 <button
                   className="btn btn--primary btn--full btn--lg"
-                  onClick={() => pushToast(c.checkoutToast, '🔒')}
+                  onClick={() => {
+                    closeCart()
+                    navigate('/checkout')
+                  }}
                 >
                   {c.checkout} <ArrowIcon />
                 </button>

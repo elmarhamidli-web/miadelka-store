@@ -164,7 +164,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const [rows, setRows] = useState<ProductRow[]>([])
   const [editing, setEditing] = useState<ProductRow | null>(null)
   const [isNew, setIsNew] = useState(false)
-  const [view, setView] = useState<'products' | 'settings'>('products')
+  const [view, setView] = useState<'products' | 'orders' | 'stats' | 'settings'>('products')
   const [toast, setToast] = useState('')
   const [filter, setFilter] = useState('')
 
@@ -230,6 +230,18 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
             Produkty
           </button>
           <button
+            className={view === 'orders' ? 'is-active' : ''}
+            onClick={() => setView('orders')}
+          >
+            Objednávky
+          </button>
+          <button
+            className={view === 'stats' ? 'is-active' : ''}
+            onClick={() => setView('stats')}
+          >
+            Statistiky
+          </button>
+          <button
             className={view === 'settings' ? 'is-active' : ''}
             onClick={() => setView('settings')}
           >
@@ -244,6 +256,10 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
 
       {view === 'settings' ? (
         <SettingsView notify={notify} />
+      ) : view === 'orders' ? (
+        <OrdersView notify={notify} />
+      ) : view === 'stats' ? (
+        <StatsView products={rows} />
       ) : editing ? (
         <ProductForm
           row={editing}
@@ -339,6 +355,267 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
 
       {toast && <div className="admin__toast">{toast}</div>}
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Orders                                                              */
+/* ------------------------------------------------------------------ */
+
+interface OrderRow {
+  id: string
+  order_number: number
+  created_at: string
+  status: string
+  customer_name: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  zip: string
+  note: string | null
+  items: {
+    id: string
+    name_cs?: string
+    name: string
+    size: string
+    color: string
+    qty: number
+    price_czk: number
+  }[]
+  subtotal_czk: number
+  shipping_czk: number
+  total_czk: number
+  payment_method: string
+}
+
+const ORDER_STATUSES: Record<string, string> = {
+  new: 'Nová',
+  paid: 'Zaplacená',
+  shipped: 'Odesláno',
+  done: 'Vyřízená',
+  cancelled: 'Zrušená',
+}
+
+function OrdersView({ notify }: { notify: (m: string) => void }) {
+  const [orders, setOrders] = useState<OrderRow[]>([])
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    const { data, error } = await supabase!
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(200)
+    if (!error && data) setOrders(data as OrderRow[])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const setStatus = async (id: string, status: string) => {
+    const { error } = await supabase!.from('orders').update({ status }).eq('id', id)
+    if (error) notify('Chyba: ' + error.message)
+    else {
+      setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)))
+      notify('Stav objednávky uložen ✓')
+    }
+  }
+
+  const remove = async (id: string) => {
+    if (!window.confirm('Opravdu smazat tuto objednávku?')) return
+    const { error } = await supabase!.from('orders').delete().eq('id', id)
+    if (error) notify('Chyba: ' + error.message)
+    else {
+      setOrders((os) => os.filter((o) => o.id !== id))
+      notify('Objednávka smazána')
+    }
+  }
+
+  if (loading) return <main className="admin__main"><p className="admin__muted">Načítání…</p></main>
+
+  return (
+    <main className="admin__main">
+      {orders.length === 0 && (
+        <div className="admin__card admin__card--narrow">
+          <p className="admin__muted">
+            Zatím žádné objednávky. Jakmile zákazník dokončí pokladnu, objeví se tady.
+          </p>
+        </div>
+      )}
+      <div className="admin__list">
+        {orders.map((o) => (
+          <div className="admin__row admin__order" key={o.id}>
+            <div className="admin__row-main" onClick={() => setOpenId(openId === o.id ? null : o.id)}>
+              <strong>
+                #{o.order_number} · {o.customer_name} · {o.total_czk} Kč
+              </strong>
+              <span className="admin__muted">
+                {new Date(o.created_at).toLocaleString('cs-CZ')} · {o.city} ·{' '}
+                {o.items?.reduce((s, i) => s + i.qty, 0)} ks ·{' '}
+                {o.payment_method === 'cod' ? 'dobírka/převod' : o.payment_method}
+              </span>
+            </div>
+            <div className="admin__row-actions">
+              <select
+                className={`admin__status admin__status--${o.status}`}
+                value={o.status}
+                onChange={(e) => void setStatus(o.id, e.target.value)}
+              >
+                {Object.entries(ORDER_STATUSES).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <button className="admin__btn" onClick={() => setOpenId(openId === o.id ? null : o.id)}>
+                {openId === o.id ? 'Skrýt' : 'Detail'}
+              </button>
+              <button className="admin__btn admin__btn--danger" onClick={() => void remove(o.id)}>
+                Smazat
+              </button>
+            </div>
+
+            {openId === o.id && (
+              <div className="admin__order-detail">
+                <div>
+                  <h4>Zákazník</h4>
+                  <p>
+                    {o.customer_name}
+                    <br />
+                    ✉️ <a href={`mailto:${o.email}`}>{o.email}</a>
+                    <br />
+                    📞 <a href={`tel:${o.phone}`}>{o.phone}</a>
+                  </p>
+                  <h4>Doručovací adresa</h4>
+                  <p>
+                    {o.address}
+                    <br />
+                    {o.zip} {o.city}
+                  </p>
+                  {o.note && (
+                    <>
+                      <h4>Poznámka</h4>
+                      <p>{o.note}</p>
+                    </>
+                  )}
+                </div>
+                <div>
+                  <h4>Položky</h4>
+                  <ul>
+                    {o.items?.map((i, x) => (
+                      <li key={x}>
+                        {i.qty}× {i.name_cs ?? i.name} — {i.color}, {i.size} · {i.price_czk * i.qty} Kč
+                      </li>
+                    ))}
+                  </ul>
+                  <p>
+                    Mezisoučet: {o.subtotal_czk} Kč · Doprava: {o.shipping_czk} Kč ·{' '}
+                    <strong>Celkem: {o.total_czk} Kč</strong>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </main>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Stats                                                               */
+/* ------------------------------------------------------------------ */
+
+interface StatsSummary {
+  sessions: number
+  page_views: number
+  product_views: number
+  add_to_carts: number
+}
+
+interface TopProduct {
+  product_id: string
+  views: number
+  carts: number
+}
+
+function StatsView({ products }: { products: ProductRow[] }) {
+  const [summary, setSummary] = useState<StatsSummary | null>(null)
+  const [top, setTop] = useState<TopProduct[]>([])
+  const [orderStats, setOrderStats] = useState<{ count: number; revenue: number } | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      const [s, t, o] = await Promise.all([
+        supabase!.from('v_stats_summary').select('*').maybeSingle(),
+        supabase!.from('v_top_products').select('*'),
+        supabase!.from('orders').select('total_czk,status'),
+      ])
+      if (s.data) setSummary(s.data as StatsSummary)
+      if (t.data) setTop(t.data as TopProduct[])
+      if (o.data) {
+        const valid = (o.data as { total_czk: number; status: string }[]).filter(
+          (x) => x.status !== 'cancelled',
+        )
+        setOrderStats({
+          count: valid.length,
+          revenue: valid.reduce((sum, x) => sum + Number(x.total_czk), 0),
+        })
+      }
+    })()
+  }, [])
+
+  const name = (id: string) =>
+    products.find((p) => p.id === id)?.name_cs ?? id
+
+  const cards: { label: string; value: string }[] = [
+    { label: 'Návštěvy (sessions)', value: String(summary?.sessions ?? '—') },
+    { label: 'Zobrazení stránek', value: String(summary?.page_views ?? '—') },
+    { label: 'Zobrazení produktů', value: String(summary?.product_views ?? '—') },
+    { label: 'Přidání do košíku', value: String(summary?.add_to_carts ?? '—') },
+    { label: 'Objednávky', value: String(orderStats?.count ?? '—') },
+    { label: 'Tržby', value: orderStats ? `${orderStats.revenue.toLocaleString('cs-CZ')} Kč` : '—' },
+  ]
+
+  return (
+    <main className="admin__main">
+      <div className="admin__stat-grid">
+        {cards.map((cd) => (
+          <div className="admin__card admin__stat" key={cd.label}>
+            <strong>{cd.value}</strong>
+            <span className="admin__muted">{cd.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="admin__card" style={{ marginTop: 18 }}>
+        <h2 style={{ marginTop: 0 }}>Nejprohlíženější produkty</h2>
+        {top.length === 0 ? (
+          <p className="admin__muted">Zatím žádná data — statistiky se začnou sbírat z návštěv webu.</p>
+        ) : (
+          <table className="admin__table">
+            <thead>
+              <tr>
+                <th>Produkt</th>
+                <th>Zobrazení</th>
+                <th>Do košíku</th>
+              </tr>
+            </thead>
+            <tbody>
+              {top.map((t) => (
+                <tr key={t.product_id}>
+                  <td>{name(t.product_id)}</td>
+                  <td>{t.views}</td>
+                  <td>{t.carts}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </main>
   )
 }
 

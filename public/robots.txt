@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /adminpanel
+Disallow: /checkout
+
+Sitemap: https://www.littleonestore.cz/sitemap.xml

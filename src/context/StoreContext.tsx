@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type { CartItem, Product } from '../types'
 import { useI18n } from '../i18n'
+import { track } from '../lib/analytics'
 
 interface Toast {
   id: number
@@ -69,6 +70,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return [...prev, { product, size, color, quantity }]
       })
       pushToast(fmt(dict.ui.toast.added, { name: productName(product.id, product.name) }), '🛒')
+      track('add_to_cart', { productId: product.id })
     },
     [pushToast, fmt, dict, productName],
   )

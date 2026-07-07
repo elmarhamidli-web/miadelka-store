@@ -5,6 +5,8 @@ import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
 import { celebrate } from '../lib/confetti'
 import { useProducts } from '../data/productsStore'
+import { track } from '../lib/analytics'
+import { applyProductSeo } from '../lib/seo'
 import { fadeUp, reveal, stagger } from '../lib/motion'
 import { ProductCard } from './ProductCard'
 import {
@@ -24,6 +26,7 @@ export function ProductPage() {
   const { addToCart, toggleWishlist, isWishlisted, openCart } = useStore()
   const {
     dict,
+    locale,
     fmt,
     formatPrice,
     productName,
@@ -47,7 +50,18 @@ export function ProductPage() {
     setColor(0)
     setQty(1)
     setActiveThumb(0)
+    if (id) track('product_view', { productId: id })
   }, [id])
+
+  useEffect(() => {
+    if (!product) return
+    applyProductSeo(
+      locale,
+      product,
+      productName(product.id, product.name),
+      productDescription(product.id, product.description),
+    )
+  }, [product, locale, productName, productDescription])
 
   if (!product) {
     return (
