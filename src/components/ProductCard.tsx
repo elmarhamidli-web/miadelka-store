@@ -68,9 +68,18 @@ export function ProductCard({ product }: Props) {
       </button>
 
       <div className="card__media" style={{ background: product.gradient }}>
-        <span className="card__emoji" aria-hidden="true">
-          {product.emoji}
-        </span>
+        {(product.colors[activeColor]?.images ?? product.colors.find((c) => c.images)?.images) ? (
+          <img
+            className="card__photo"
+            src={(product.colors[activeColor]?.images ?? product.colors.find((c) => c.images)!.images!)[0]}
+            alt={name}
+            loading="lazy"
+          />
+        ) : (
+          <span className="card__emoji" aria-hidden="true">
+            {product.emoji}
+          </span>
+        )}
         <div className="card__shine" />
         <button className="card__quick" onClick={(e) => { e.stopPropagation(); open() }}>
           {dict.ui.card.view}

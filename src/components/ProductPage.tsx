@@ -67,7 +67,10 @@ export function ProductPage() {
   const similar = getSimilarProducts(product)
   const wished = isWishlisted(product.id)
   const name = productName(product.id, product.name)
-  const thumbs = [product.emoji, '🧵', '📏', '🎁']
+  const photos =
+    product.colors[color]?.images ?? product.colors.find((c) => c.images)?.images
+  const thumbs = photos ?? [product.emoji, '🧵', '📏', '🎁']
+  const thumbIndex = Math.min(activeThumb, thumbs.length - 1)
 
   const handleAdd = (e: MouseEvent) => {
     addToCart(product, size ?? product.sizes[0], product.colors[color].name, qty)
@@ -92,26 +95,41 @@ export function ProductPage() {
                 {product.badge && (
                   <span className="discount-badge">{product.badge}</span>
                 )}
-                <motion.span
-                  key={activeThumb}
-                  className="pdp__hero-emoji"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  aria-hidden="true"
-                >
-                  {thumbs[activeThumb]}
-                </motion.span>
+                {photos ? (
+                  <motion.img
+                    key={`${color}-${thumbIndex}`}
+                    className="pdp__hero-photo"
+                    src={photos[thumbIndex]}
+                    alt={name}
+                    initial={{ scale: 1.02, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                  />
+                ) : (
+                  <motion.span
+                    key={thumbIndex}
+                    className="pdp__hero-emoji"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    aria-hidden="true"
+                  >
+                    {thumbs[thumbIndex]}
+                  </motion.span>
+                )}
               </div>
               <div className="pdp__thumbs">
                 {thumbs.map((t, i) => (
                   <button
                     key={i}
-                    className={`pdp__thumb ${i === activeThumb ? 'is-active' : ''}`}
+                    className={`pdp__thumb ${i === thumbIndex ? 'is-active' : ''}`}
                     style={{ background: product.gradient }}
                     onClick={() => setActiveThumb(i)}
                     aria-label={`${name} ${i + 1}`}
                   >
-                    <span aria-hidden="true">{t}</span>
+                    {photos ? (
+                      <img src={t} alt="" loading="lazy" />
+                    ) : (
+                      <span aria-hidden="true">{t}</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -151,7 +169,10 @@ export function ProductPage() {
                       key={col.name}
                       className={`color-dot color-dot--lg ${i === color ? 'is-active' : ''}`}
                       style={{ background: col.hex }}
-                      onClick={() => setColor(i)}
+                      onClick={() => {
+                        setColor(i)
+                        setActiveThumb(0)
+                      }}
                       aria-label={colorName(col.name)}
                     />
                   ))}

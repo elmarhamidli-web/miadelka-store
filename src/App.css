@@ -375,6 +375,23 @@
   margin: auto;
   filter: drop-shadow(0 12px 20px rgba(58, 46, 58, 0.18));
 }
+.hero__card--main {
+  overflow: hidden;
+}
+.hero__card-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: inherit;
+}
+.hero__card--main .discount-badge,
+.hero__card--main .hero__card-info {
+  position: relative;
+  z-index: 1;
+}
 .hero__card-info {
   background: rgba(255, 255, 255, 0.85);
   border-radius: var(--radius);
@@ -563,6 +580,18 @@
 }
 .card:hover .card__emoji {
   transform: scale(1.12) rotate(-5deg);
+}
+.card__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transition: transform 0.5s var(--ease);
+}
+.card:hover .card__photo {
+  transform: scale(1.05);
 }
 .card__shine {
   position: absolute;
@@ -1175,6 +1204,13 @@
   place-items: center;
   font-size: 2.2rem;
   flex-shrink: 0;
+  overflow: hidden;
+}
+.cart-item__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
 }
 .cart-item__info {
   flex: 1;
@@ -1331,6 +1367,14 @@
   font-size: 8rem;
   filter: drop-shadow(0 16px 28px rgba(58, 46, 58, 0.2));
 }
+.pdp__hero-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
 .pdp__thumbs {
   display: flex;
   gap: 12px;
@@ -1349,6 +1393,15 @@
 }
 .pdp__thumb:hover {
   opacity: 1;
+}
+.pdp__thumb {
+  overflow: hidden;
+}
+.pdp__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
 }
 .pdp__thumb.is-active {
   opacity: 1;

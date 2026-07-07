@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { ArrowIcon } from './icons'
 import { useI18n } from '../i18n'
 import { fadeUp, stagger } from '../lib/motion'
+import { getProductById } from '../data/products'
 
 interface Props {
   onShop: () => void
@@ -19,6 +20,9 @@ const floaters = [
 export function Hero({ onShop, onExplore }: Props) {
   const { dict, formatPrice, productName } = useI18n()
   const h = dict.ui.hero
+  const heroMain = getProductById('bunny-3piece-set')
+  const heroMiniA = getProductById('ribbed-romper-set')
+  const heroMiniB = getProductById('animal-romper')
 
   return (
     <section className="hero" id="top">
@@ -99,11 +103,19 @@ export function Hero({ onShop, onExplore }: Props) {
             animate={{ y: [0, -14, 0] }}
             transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
           >
-            <span className="hero__card-emoji">🌈</span>
-            <span className="discount-badge">-30%</span>
+            {heroMain?.colors[0].images ? (
+              <img
+                className="hero__card-photo"
+                src={heroMain.colors[0].images[0]}
+                alt={productName(heroMain.id, heroMain.name)}
+              />
+            ) : (
+              <span className="hero__card-emoji">🐰</span>
+            )}
+            <span className="discount-badge">{h.bestsellerTag}</span>
             <div className="hero__card-info">
-              <strong>{productName('rainbow-hoodie', 'Rainbow Hoodie')}</strong>
-              <span>{formatPrice(39)} · {h.bestsellerTag}</span>
+              <strong>{heroMain ? productName(heroMain.id, heroMain.name) : ''}</strong>
+              <span>{heroMain ? formatPrice(heroMain.price) : ''}</span>
             </div>
           </motion.div>
 
@@ -112,10 +124,10 @@ export function Hero({ onShop, onExplore }: Props) {
             animate={{ y: [0, 12, 0] }}
             transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
           >
-            <span>🧦</span>
+            <span>🎀</span>
             <div>
-              <strong>{productName('star-stripe-socks', 'Socks')}</strong>
-              <span>{formatPrice(12)}</span>
+              <strong>{heroMiniA ? productName(heroMiniA.id, heroMiniA.name) : ''}</strong>
+              <span>{heroMiniA ? formatPrice(heroMiniA.price) : ''}</span>
             </div>
           </motion.div>
 
@@ -124,10 +136,10 @@ export function Hero({ onShop, onExplore }: Props) {
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }}
           >
-            <span>👟</span>
+            <span>🧸</span>
             <div>
-              <strong>{productName('mini-sneakers', 'Mini Sneakers')}</strong>
-              <span>{formatPrice(42)}</span>
+              <strong>{heroMiniB ? productName(heroMiniB.id, heroMiniB.name) : ''}</strong>
+              <span>{heroMiniB ? formatPrice(heroMiniB.price) : ''}</span>
             </div>
           </motion.div>
 

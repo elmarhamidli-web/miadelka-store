@@ -193,86 +193,13 @@ export const en: Dictionary = {
   },
   categories: {
     baby: { name: 'Baby', tagline: '0 – 24 months' },
-    girls: { name: 'Girls', tagline: '2 – 12 years' },
-    boys: { name: 'Boys', tagline: '2 – 12 years' },
+    girls: { name: 'Girls', tagline: '0 – 24 months' },
+    boys: { name: 'Boys', tagline: '0 – 24 months' },
     shoes: { name: 'Shoes', tagline: 'Tiny steps' },
     accessories: { name: 'Accessories', tagline: 'Finishing touches' },
     'new-collection': { name: 'New Collection', tagline: 'Fresh arrivals' },
   },
-  products: {
-    'soft-cotton-baby-set': {
-      name: 'Soft Cotton Baby Set',
-      description:
-        'A buttery-soft two-piece set spun from GOTS-certified organic cotton. Gentle flat seams and a wide envelope neck make dressing wriggly little ones effortless.',
-      material: '100% organic cotton, 230 gsm interlock knit',
-    },
-    'rainbow-hoodie': {
-      name: 'Rainbow Hoodie',
-      description:
-        'A cosy brushed-fleece hoodie with a cheerful rainbow appliqué, kangaroo pocket and soft jersey-lined hood. Designed to layer over everything.',
-      material: '85% organic cotton, 15% recycled polyester fleece',
-    },
-    'little-explorer-jacket': {
-      name: 'Little Explorer Jacket',
-      description:
-        'A water-repellent puffer built for puddle-jumping adventures. Fleece-lined pockets, reflective trims and a packable hood keep explorers warm and seen.',
-      material: 'Recycled polyester shell, responsibly-sourced down-free padding',
-    },
-    'cozy-kids-pajamas': {
-      name: 'Cozy Kids Pajamas',
-      description:
-        'Dreamy long-sleeve pyjamas in whisper-soft cotton with a starry print and snug ribbed cuffs. OEKO-TEX certified for sensitive skin.',
-      material: '95% organic cotton, 5% elastane rib',
-    },
-    'organic-cotton-tshirt': {
-      name: 'Organic Cotton T-Shirt',
-      description:
-        'The everyday hero tee. Pre-washed for zero shrink, with a relaxed fit and a tagless neck that never itches.',
-      material: '100% organic combed cotton, 180 gsm',
-    },
-    'mini-sneakers': {
-      name: 'Mini Sneakers',
-      description:
-        'Featherlight first sneakers with a flexible sole, easy double-strap closure and breathable mesh. Made to keep up with busy little feet.',
-      material: 'Recycled mesh upper, natural rubber outsole',
-    },
-    'summer-dress': {
-      name: 'Summer Dress',
-      description:
-        'A twirl-worthy tiered dress in airy cotton voile with a hidden bloomer for comfy play. Lined bodice and adjustable shoulder ties.',
-      material: '100% organic cotton voile, lined bodice',
-    },
-    'warm-winter-coat': {
-      name: 'Warm Winter Coat',
-      description:
-        'Toasty thermal coat with a sherpa-lined hood, fold-over mittens for the littlest sizes and a wind-blocking storm flap. Rated for real winters.',
-      material: 'Recycled polyester, thermal wadding, sherpa lining',
-    },
-    'sunshine-bucket-hat': {
-      name: 'Sunshine Bucket Hat',
-      description:
-        'A reversible UPF 50+ bucket hat with a chin toggle that stays put on windy days. Two looks in one for double the fun.',
-      material: '100% organic cotton twill, UPF 50+',
-    },
-    'cuddle-knit-cardigan': {
-      name: 'Cuddle Knit Cardigan',
-      description:
-        'A heirloom-soft chunky-knit cardigan with wooden buttons and a relaxed boxy fit that layers beautifully all year round.',
-      material: 'Organic cotton & bamboo blend knit',
-    },
-    'star-stripe-socks': {
-      name: 'Star & Stripe Socks',
-      description:
-        'A joyful 5-pack of grippy-sole socks in mix-and-match stars and stripes. Seamless toes keep tiny piggies happy.',
-      material: 'Organic cotton blend, non-slip soles',
-    },
-    'denim-overalls': {
-      name: 'Little Denim Overalls',
-      description:
-        'Soft washed-denim dungarees with adjustable straps, a roomy front pocket and reinforced knees for serious adventuring.',
-      material: 'Organic cotton denim with a touch of stretch',
-    },
-  },
+  products: {},
   reviews: {
     r1: {
       location: 'Lisbon, PT',

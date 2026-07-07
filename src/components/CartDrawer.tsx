@@ -92,7 +92,16 @@ export function CartDrawer() {
                         className="cart-item__media"
                         style={{ background: item.product.gradient }}
                       >
-                        <span aria-hidden="true">{item.product.emoji}</span>
+                        {(() => {
+                          const imgs =
+                            item.product.colors.find((c) => c.name === item.color)?.images ??
+                            item.product.colors.find((c) => c.images)?.images
+                          return imgs ? (
+                            <img src={imgs[0]} alt="" loading="lazy" />
+                          ) : (
+                            <span aria-hidden="true">{item.product.emoji}</span>
+                          )
+                        })()}
                       </div>
                       <div className="cart-item__info">
                         <strong>{productName(item.product.id, item.product.name)}</strong>

@@ -190,115 +190,187 @@ export const cs: Dictionary = {
       wishOff: 'Odebráno z oblíbených',
     },
     colors: {
-      Blush: 'Růžová',
-      Cream: 'Krémová',
-      Sky: 'Nebesky modrá',
-      Rainbow: 'Duhová',
-      Sunset: 'Západ slunce',
-      Mint: 'Mátová',
-      Ocean: 'Oceánová',
-      Forest: 'Lesní zelená',
-      Sand: 'Písková',
-      Lavender: 'Levandulová',
-      Cloud: 'Obláčková',
+      Pink: 'Růžová',
+      'Peach Pink': 'Broskvově růžová',
+      'Dark Pink': 'Tmavě růžová',
       Peach: 'Broskvová',
-      Meadow: 'Luční zelená',
-      Butter: 'Máslová',
-      Coral: 'Korálová',
-      Petal: 'Plátková',
-      Lemon: 'Citronová',
-      Midnight: 'Půlnoční modř',
-      Berry: 'Bobulová',
-      Pine: 'Borovicová',
-      Sunbeam: 'Sluneční',
-      Caramel: 'Karamelová',
-      Sage: 'Šalvějová',
-      'Washed Blue': 'Sepraná modrá',
-      Ecru: 'Ecru',
-      Mixed: 'Mix',
-      Pastel: 'Pastelová',
+      Beige: 'Béžová',
+      Green: 'Zelená',
+      'Dark Green': 'Tmavě zelená',
+      Grey: 'Šedá',
+      Greige: 'Šedo-béžová',
+      Blue: 'Světle modrá',
+      Red: 'Červená',
+      Cream: 'Smetanová',
+      Safari: 'Safari',
+      Script: 'S nápisem',
+      Print: 'S potiskem',
     },
   },
   categories: {
     baby: { name: 'Miminka', tagline: '0–24 měsíců' },
-    girls: { name: 'Holky', tagline: '2–12 let' },
-    boys: { name: 'Kluci', tagline: '2–12 let' },
+    girls: { name: 'Holky', tagline: '0–24 měsíců' },
+    boys: { name: 'Kluci', tagline: '0–24 měsíců' },
     shoes: { name: 'Boty', tagline: 'První krůčky' },
     accessories: { name: 'Doplňky', tagline: 'Dotek na závěr' },
     'new-collection': { name: 'Nová kolekce', tagline: 'Čerstvé novinky' },
   },
   products: {
-    'soft-cotton-baby-set': {
-      name: 'Měkká bavlněná souprava pro miminka',
+    'girls-summer-set': {
+      name: 'Dívčí letní set – tričko a šortky',
       description:
-        'Hebká dvoudílná souprava z biobavlny s certifikací GOTS. Jemné ploché švy a široký obálkový výstřih usnadňují oblékání i těch nejneposednějších.',
-      material: '100% biobavlna, žakárový úplet 230 g/m²',
+        'Lehký a pohodlný letní komplet ze 100% bavlny, který zajistí maximální komfort i během horkých dnů. Souprava obsahuje růžové tričko s ozdobnou aplikací mašle a pruhované šortky s pružným pasem. Ideální na procházky, hraní i každodenní nošení.',
+      material: '100 % bavlna, měkká a prodyšná',
     },
-    'rainbow-hoodie': {
-      name: 'Duhová mikina',
+    'girls-flower-set': {
+      name: 'Dívčí souprava – mikina a kalhoty',
       description:
-        'Útulná mikina z česaného fleecu s veselou duhovou aplikací, klokaní kapsou a měkkou kapucí podšitou žerzejem. Navržená pro vrstvení přes cokoli.',
-      material: '85% biobavlna, 15% recyklovaný polyesterový fleece',
+        'Elegantní a pohodlná souprava z 95 % bavlny a 5 % elastanu. Komplet tvoří mikina s dlouhým rukávem, ozdobným krajkovým límečkem a jemným květinovým vzorem spolu s pohodlnými kalhotami s pružným pasem. Měkká, příjemná na dotek a zároveň pružná.',
+      material: '95 % bavlna, 5 % elastan',
     },
-    'little-explorer-jacket': {
-      name: 'Bunda Malý objevitel',
+    'bunny-3piece-set': {
+      name: 'Dětská 3dílná souprava se zajíčkem',
       description:
-        'Voděodolná bunda stvořená pro skákání do louží. Fleecem podšité kapsy, reflexní prvky a skládací kapuce udrží objevitele v teple a na očích.',
-      material: 'Recyklovaný polyester, výplň bez peří z odpovědných zdrojů',
+        'Stylová a pohodlná 3dílná souprava pro nejmenší, ideální na jaro, podzim i chladnější letní dny. Komplet obsahuje mikinu s roztomilým motivem zajíčka, pohodlné bavlněné kalhoty a lehce zateplenou vestu s kapucí. K dispozici v béžové a růžové barvě.',
+      material: 'Mikina a kalhoty 100 % bavlna · vesta 50 % bavlna, 50 % polyester',
     },
-    'cozy-kids-pajamas': {
-      name: 'Útulné dětské pyžamo',
+    'cotton-pants-2pack': {
+      name: 'Dětské bavlněné kalhoty – 2 ks',
       description:
-        'Snové pyžamo s dlouhým rukávem z hebké bavlny s hvězdným potiskem a přiléhavými žebrovanými manžetami. Certifikace OEKO-TEX pro citlivou pokožku.',
-      material: '95% biobavlna, 5% elastanové žebrování',
+        'Pohodlné dětské kalhoty ze 100% bavlny pro každodenní nošení. Sada obsahuje 2 kusy – jedny s veselým motivem safari zvířátek a jedny jednobarevné s potiskem zebry. Díky pružnému pasu se snadno oblékají a perfektně padnou.',
+      material: '100 % bavlna, měkká a prodyšná',
     },
-    'organic-cotton-tshirt': {
-      name: 'Tričko z biobavlny',
+    'bear-3piece-set': {
+      name: 'Chlapecká 3dílná souprava s medvídkem',
       description:
-        'Každodenní hrdina. Předeprané proti srážení, s volným střihem a bezešvým výstřihem bez visačky, který nikdy nedráždí.',
-      material: '100% česaná biobavlna, 180 g/m²',
+        'Pohodlná a stylová 3dílná souprava pro malé kluky, ideální na jaro, podzim i chladnější dny. Součástí kompletu je mikina s roztomilým motivem medvídka, pohodlné bavlněné kalhoty a lehce zateplená vesta s kapucí. K dispozici v modré a šedé barvě.',
+      material: 'Mikina a kalhoty 100 % bavlna · vesta 50 % bavlna, 50 % polyester',
     },
-    'mini-sneakers': {
-      name: 'Mini tenisky',
+    'boys-vest-3piece': {
+      name: 'Chlapecká 3dílná souprava s vestou',
       description:
-        'Lehoučké první tenisky s pružnou podrážkou, snadným zapínáním na dva pásky a prodyšnou síťovinou. Stvořené, aby stačily rušným nožkám.',
-      material: 'Svršek z recyklované síťoviny, podrážka z přírodního kaučuku',
+        'Moderní a pohodlná 3dílná souprava pro malé kluky, ideální na jaro, podzim i chladnější dny. Komplet obsahuje mikinu s dlouhým rukávem, pohodlné kalhoty a lehce zateplenou vestu s kapucí. Stylový design vhodný pro každodenní nošení.',
+      material: 'Mikina a kalhoty 100 % bavlna · vesta 50 % bavlna, 50 % polyester',
     },
-    'summer-dress': {
-      name: 'Letní šaty',
+    'boys-hoodie-3piece': {
+      name: 'Chlapecká 3dílná souprava s mikinou',
       description:
-        'Šaty na protáčení s volány ze vzdušné bavlněné voálové tkaniny a skrytými kalhotkami pro pohodlnou hru. Podšitý živůtek a nastavitelná ramínka.',
-      material: '100% bavlněný voál, podšitý živůtek',
+        'Stylová a pohodlná 3dílná souprava pro malé kluky, ideální pro každodenní nošení. Komplet obsahuje tričko s dlouhým rukávem, pohodlné kalhoty a mikinu na zip s kapucí. Moderní barvy a sportovní design z ní dělají skvělou volbu na procházky i hraní.',
+      material: '100 % bavlna, měkká a prodyšná',
     },
-    'warm-winter-coat': {
-      name: 'Teplý zimní kabát',
+    'elephant-2piece-set': {
+      name: 'Chlapecká souprava se sloníkem',
       description:
-        'Hřejivý termo kabát s kapucí podšitou beránkem, překládacími rukavicemi pro nejmenší velikosti a větru odolnou légou. Připravený na opravdovou zimu.',
-      material: 'Recyklovaný polyester, termo výplň, beránková podšívka',
+        'Pohodlná a stylová 2dílná souprava pro malé kluky. Komplet obsahuje mikinu s dlouhým rukávem a roztomilou aplikací sloníka a pohodlné kalhoty s pružným pasem. Jemná modro-bílá barevná kombinace pro každodenní nošení.',
+      material: '100 % bavlna, měkká a prodyšná',
     },
-    'sunshine-bucket-hat': {
-      name: 'Sluneční klobouček',
+    'girls-love-3piece': {
+      name: 'Dívčí 3dílná souprava Love',
       description:
-        'Oboustranný klobouček s UPF 50+ a stahovací šňůrkou pod bradou, který drží i za větru. Dva vzhledy v jednom pro dvojnásobnou zábavu.',
-      material: '100% bavlněný kepr, UPF 50+',
+        'Stylová a pohodlná 3dílná souprava pro malé slečny. Komplet obsahuje tričko s dlouhým rukávem, pohodlné kalhoty a mikinu na zip s kapucí. Romantický design se srdíčky a nápisem Love dodává soupravě roztomilý vzhled.',
+      material: '100 % bavlna, měkká a prodyšná',
     },
-    'cuddle-knit-cardigan': {
-      name: 'Hebký pletený svetřík',
+    'girls-vest-3piece': {
+      name: 'Dívčí 3dílná souprava s vestou',
       description:
-        'Svetřík z hrubého úpletu hebký jako rodinné dědictví s dřevěnými knoflíky a volným boxy střihem, který krásně vrství po celý rok.',
-      material: 'Úplet ze směsi biobavlny a bambusu',
+        'Elegantní a pohodlná 3dílná souprava pro malé slečny, ideální na jaro, podzim i chladnější dny. Komplet obsahuje mikinu s dlouhým rukávem, pohodlné kalhoty a lehce zateplenou vestu s kapucí. Jemná růžová barva se zlatými květinovými detaily.',
+      material: 'Mikina a kalhoty 100 % bavlna · vesta 50 % bavlna, 50 % polyester',
     },
-    'star-stripe-socks': {
-      name: 'Ponožky s hvězdami a proužky',
+    'boys-shirt-set': {
+      name: 'Chlapecký letní komplet – košile a šortky',
       description:
-        'Radostné balení 5 párů ponožek s protiskluzovou podrážkou v kombinaci hvězd a proužků. Bezešvé špičky udrží malé prstíky spokojené.',
-      material: 'Směs biobavlny, protiskluzové podrážky',
+        'Elegantní letní 2dílný komplet pro malé kluky, ideální na rodinné oslavy, focení i běžné nošení. Souprava obsahuje stylovou košili s krátkým rukávem a pohodlné šortky s kapsami. Díky 100% bavlně je komplet lehký a prodyšný.',
+      material: '100 % bavlna, lehká a prodyšná',
     },
-    'denim-overalls': {
-      name: 'Malé džínové lacláče',
+    'boys-summer-set': {
+      name: 'Chlapecký letní komplet – tričko a šortky',
       description:
-        'Měkké lacláče ze sepraného denimu s nastavitelnými ramínky, prostornou přední kapsou a zesílenými koleny pro pořádné dobrodružství.',
-      material: 'Biobavlněný denim s příměsí elastanu',
+        'Lehký a pohodlný 2dílný komplet pro malé kluky, ideální na teplé letní dny. Souprava obsahuje bavlněné tričko s krátkým rukávem a pohodlné šortky s pružným pasem. Elegantní kombinace bílé a barevných tónů.',
+      material: '100 % bavlna, lehká a prodyšná',
+    },
+    'tropical-summer-set': {
+      name: 'Chlapecký letní komplet s tropickým vzorem',
+      description:
+        'Lehký a stylový 2dílný letní komplet pro malé kluky. Souprava obsahuje pohodlné tričko s krátkým rukávem a šortky s tropickým vzorem listů. Díky 100% bavlně je komplet příjemný na nošení a ideální do teplých letních dnů.',
+      material: '100 % bavlna, lehká a prodyšná',
+    },
+    'boys-cotton-set': {
+      name: 'Chlapecká souprava – tričko a kalhoty',
+      description:
+        'Lehká a pohodlná 2dílná souprava pro malé kluky, ideální na teplejší dny. Komplet obsahuje tričko s krátkým rukávem a dlouhé kalhoty s pružným pasem v elegantní béžovo-hnědé kombinaci.',
+      material: '100 % bavlna, měkká a prodyšná',
+    },
+    'girls-c-3piece': {
+      name: 'Dívčí 3dílná souprava s písmenem C',
+      description:
+        'Stylová a pohodlná 3dílná souprava pro malé slečny. Komplet obsahuje tričko s dlouhým rukávem, pohodlné kalhoty a lehkou mikinu na patentky. Jemná růžová barva a moderní design s písmenem C dodávají sportovně-elegantní vzhled.',
+      material: '100 % bavlna, měkká a prodyšná',
+    },
+    'girls-floral-3piece': {
+      name: 'Dívčí 3dílná souprava s květinami',
+      description:
+        'Roztomilá a pohodlná 3dílná souprava pro malé princezny. Komplet obsahuje body s dlouhým rukávem, pohodlné kalhoty a mikinu s kapucí. Jemná broskvová barva v kombinaci s květinovým motivem vytváří něžný a elegantní vzhled.',
+      material: '100 % bavlna, měkká a prodyšná',
+    },
+    'newborn-bunny-set': {
+      name: 'Novorozenecká souprava se zajíčkem',
+      description:
+        'Roztomilá 3dílná souprava pro novorozence, která zajistí miminku maximální pohodlí od prvních dnů života. Komplet obsahuje kabátek s dlouhým rukávem, polodupačky a čepičku. Motiv zajíčka s medvídkem je ideální jako první výbavička nebo dárek.',
+      material: '100 % bavlna, šetrná k citlivé pokožce novorozence',
+    },
+    'newborn-bear-set': {
+      name: 'Novorozenecká souprava s medvídkem',
+      description:
+        'Jemná 2dílná souprava pro novorozené holčičky. Komplet obsahuje praktický overal se zapínáním na patentky po celé délce a měkkou čepičku. Jemná růžová barva s roztomilým motivem medvídka se hvězdičkami.',
+      material: '100 % bavlna, šetrná k citlivé pokožce novorozence',
+    },
+    'animal-romper': {
+      name: 'Dětský overal se zvířátky',
+      description:
+        'Měkký a pohodlný overal pro miminka z kvalitní žebrované bavlny. Díky praktickému zapínání na patentky po celé délce se snadno obléká i přebaluje. Roztomilé motivy zvířátek – lvíčci, medvídci i Winnie – jsou ideální pro každodenní nošení i spaní.',
+      material: '100 % žebrovaná bavlna, měkká a prodyšná',
+    },
+    'boys-romper-hat': {
+      name: 'Chlapecký overal s čepičkou',
+      description:
+        'Pohodlný a stylový komplet pro miminka: bavlněný overal se špičkou a dlouhým rukávem a sladěná čepička. Praktické zapínání na patentky po celé délce usnadňuje oblékání i přebalování. Dostupný v zelené, světle modré a šedo-béžové.',
+      material: '100 % bavlna, šetrná k citlivé dětské pokožce',
+    },
+    'tiger-3piece-set': {
+      name: 'Chlapecká 3dílná souprava s tygříkem',
+      description:
+        'Roztomilá a pohodlná 3dílná souprava pro malé dobrodruhy. Komplet obsahuje body s dlouhým rukávem, pohodlné kalhoty a sladěnou čepičku. Veselý motiv tygříka a moderní zvířecí vzor dodávají soupravě originální vzhled.',
+      material: '100 % bavlna, šetrná k citlivé dětské pokožce',
+    },
+    'hearts-skirt-set': {
+      name: 'Dívčí souprava se srdíčky a sukýnkou',
+      description:
+        'Elegantní a roztomilá 3dílná souprava pro malé princezny. Komplet obsahuje body s dlouhým rukávem, stylovou sukýnku s velkou mašlí a sladěnou čelenku. Jemný vzor červených srdíček je ideální na oslavy, focení i každodenní nošení.',
+      material: '100 % bavlna, měkká a prodyšná',
+    },
+    'hearts-3piece-set': {
+      name: 'Dívčí 3dílná souprava se srdíčky',
+      description:
+        'Stylová a pohodlná 3dílná souprava pro malé princezny. Komplet obsahuje body s dlouhým rukávem, pohodlné kalhoty a mikinu s kapucí zdobenou motivem srdíček a mašlí. Moderní kombinace červené a smetanové barvy s jemným žebrovaným vzorem.',
+      material: '100 % bavlna, měkká a prodyšná',
+    },
+    'fox-romper-set': {
+      name: 'Dívčí souprava s liškou',
+      description:
+        'Něžná a elegantní souprava pro malé princezny. Komplet obsahuje pohodlný overal s dlouhým rukávem a sladěnou čelenku nebo čepičku. Romantický motiv lišky a květin je ideální pro první společné chvíle i slavnostní příležitosti.',
+      material: '100 % bavlna, šetrná k citlivé dětské pokožce',
+    },
+    'ribbed-romper-set': {
+      name: 'Dívčí žebrovaný overal s čelenkou',
+      description:
+        'Stylový a pohodlný komplet pro malé princezny: měkký žebrovaný overal s dlouhým rukávem a sladěná čelenka s mašlí. Elegantní volánky na ramenou a ozdobná mašle dodávají outfitu jemný a moderní vzhled. V béžové a tmavě zelené barvě.',
+      material: '100 % žebrovaná bavlna, měkká a prodyšná',
+    },
+    'elegant-romper': {
+      name: 'Dívčí elegantní overal',
+      description:
+        'Jemný a elegantní overal, který spojuje pohodlí s krásným slavnostním vzhledem. Kombinace měkké bavlny, ozdobného límečku, mašličky v pase a třpytivých růžových kalhot je ideální pro výjimečné příležitosti i každodenní nošení.',
+      material: '100 % bavlna, měkká a prodyšná',
     },
   },
   reviews: {

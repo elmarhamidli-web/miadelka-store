@@ -17,6 +17,8 @@ export interface Category {
 export interface ColorOption {
   name: string
   hex: string
+  /** Photo gallery for this colour variant (public paths). */
+  images?: string[]
 }
 
 export interface Product {
