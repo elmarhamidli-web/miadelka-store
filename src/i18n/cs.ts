@@ -5,7 +5,7 @@ export const cs: Dictionary = {
   flag: '🇨🇿',
   currency: { symbol: 'Kč', rate: 24, position: 'after', thousand: ' ' },
   ui: {
-    announce: '✨ Doprava zdarma nad 1 500 Kč · Snadné vrácení do 30 dnů ✨',
+    announce: '✨ Doprava 90 Kč · Zdarma nad 2 000 Kč · Snadné vrácení do 30 dnů ✨',
     search: {
       placeholder: 'Hledejte mikiny, šaty, tenisky…',
       submit: 'Hledat',
@@ -33,7 +33,7 @@ export const cs: Dictionary = {
       stat2Label: '12k recenzí',
       stat3: '100%',
       stat3Label: 'Biobavlna',
-      shipping: 'Doprava zdarma a rychle',
+      shipping: 'Doprava zdarma nad 2 000 Kč',
       bestsellerTag: 'Nejprodávanější',
     },
     categoriesSection: {
@@ -75,7 +75,7 @@ export const cs: Dictionary = {
       },
       delivery: {
         title: 'Rychlé doručení',
-        text: 'Uhlíkově neutrální doprava za 2–4 dny, zdarma nad 1 500 Kč.',
+        text: 'Doprava 90 Kč, odeslání za 2–4 dny. Zdarma nad 2 000 Kč.',
       },
       returns: {
         title: 'Snadné vrácení',
@@ -127,6 +127,7 @@ export const cs: Dictionary = {
       view: 'Zobrazit produkt',
       addAria: 'Přidat {name} do košíku',
       wishAdd: 'Přidat do oblíbených',
+      outOfStock: 'Vyprodáno',
       wishRemove: 'Odebrat z oblíbených',
     },
     badges: { Bestseller: 'Nejprodávanější', New: 'Novinka' },
@@ -138,7 +139,10 @@ export const cs: Dictionary = {
       emptySub: 'Přidejte pár roztomilých kousků a začněte.',
       continue: 'Pokračovat v nákupu',
       subtotal: 'Mezisoučet',
-      note: 'Doprava a daně se spočítají u pokladny.',
+      shipping: 'Doprava',
+      shippingFree: 'Zdarma',
+      total: 'Celkem',
+      note: 'Ceny jsou konečné, včetně DPH.',
       checkout: 'K pokladně',
       clear: 'Vyprázdnit košík',
       checkoutToast: 'Pokladna je prototyp — nic nebylo účtováno 💖',
@@ -155,7 +159,7 @@ export const cs: Dictionary = {
       size: 'Velikost',
       quantity: 'Množství',
       addToCart: 'Přidat do košíku',
-      deliveryInfo: 'Doprava zdarma nad 1 500 Kč · odeslání za 2–4 dny',
+      deliveryInfo: 'Doprava 90 Kč, zdarma nad 2 000 Kč · odeslání za 2–4 dny',
       returnsInfo: 'Snadné vrácení a výměna do 30 dnů',
       similar: 'Mohlo by se vám líbit',
       notFoundTitle: 'Produkt nenalezen',
@@ -166,13 +170,16 @@ export const cs: Dictionary = {
       tagline:
         'Prémiové oblečení šetrné k planetě pro malé dobrodruhy. Navrženo s láskou, stvořené k dědění.',
       contactTitle: 'Kontaktujte nás',
-      contact: ['✉️ hello@littleonestore.cz', '📞 +420 800 555 0142', '📍 Maple Lane 14, Praha'],
+      contact: ['✉️ hello@littleonestore.cz', '📍 Hviezdoslavova 545/41, Brno'],
+      companyTitle: 'Provozovatel',
+      company: ['Azruk s.r.o.', 'IČO: 14420333', 'Hviezdoslavova 545/41', 'Brno'],
       secure: '🔒 Bezpečná pokladna',
-      rights: '© 2026 Little One Store — designový prototyp. Všechna práva vyhrazena.',
+      rights: '© 2026 Little One Store · Azruk s.r.o. Všechna práva vyhrazena.',
+      credit: 'Web vytvořila Rakaprime Consulting Group s.r.o.',
       columns: [
         {
           title: 'Nakupovat',
-          links: ['Nová kolekce', 'Miminka', 'Holky', 'Kluci', 'Boty', 'Doplňky'],
+          links: ['Nová kolekce', 'Miminka', 'Holky', 'Kluci'],
         },
         {
           title: 'Pomoc',

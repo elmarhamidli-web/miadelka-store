@@ -1,9 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
+import { useProducts } from '../data/productsStore'
 import { CloseIcon, MinusIcon, PlusIcon, TrashIcon, ArrowIcon } from './icons'
 
-const FREE_SHIP = 60
+// 1 base currency unit = 24 Kč
+const CZK = 24
 
 export function CartDrawer() {
   const {
@@ -18,10 +20,15 @@ export function CartDrawer() {
     clearCart,
   } = useStore()
   const { dict, fmt, formatPrice, productName, colorName } = useI18n()
+  const { settings } = useProducts()
   const c = dict.ui.cart
 
+  const FREE_SHIP = settings.free_over_czk / CZK
+  const SHIPPING_FEE = settings.shipping_czk / CZK
   const remaining = Math.max(0, FREE_SHIP - subtotal)
   const progress = Math.min(100, (subtotal / FREE_SHIP) * 100)
+  const shippingFree = subtotal >= FREE_SHIP
+  const total = subtotal + (shippingFree ? 0 : SHIPPING_FEE)
 
   return (
     <AnimatePresence>
@@ -148,9 +155,19 @@ export function CartDrawer() {
 
             {cart.length > 0 && (
               <footer className="cart__foot">
-                <div className="cart__subtotal">
+                <div className="cart__subtotal cart__subtotal--line">
                   <span>{c.subtotal}</span>
-                  <strong>{formatPrice(subtotal)}</strong>
+                  <span>{formatPrice(subtotal)}</span>
+                </div>
+                <div className="cart__subtotal cart__subtotal--line">
+                  <span>{c.shipping}</span>
+                  <span className={shippingFree ? 'cart__ship-free' : ''}>
+                    {shippingFree ? c.shippingFree : formatPrice(SHIPPING_FEE)}
+                  </span>
+                </div>
+                <div className="cart__subtotal">
+                  <span>{c.total}</span>
+                  <strong>{formatPrice(total)}</strong>
                 </div>
                 <p className="cart__note">{c.note}</p>
                 <button

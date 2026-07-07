@@ -10,11 +10,12 @@ import { Reviews } from './Reviews'
 import { Newsletter } from './Newsletter'
 import { Shop } from './Shop'
 import { useI18n } from '../i18n'
-import { featuredProducts, bestSellers, seasonalProducts } from '../data/products'
+import { useProducts } from '../data/productsStore'
 
 export function HomePage() {
   const [searchParams] = useSearchParams()
   const { dict } = useI18n()
+  const { featured: featuredProducts, bestSellers, seasonal: seasonalProducts } = useProducts()
   const shopRef = useRef<HTMLDivElement>(null)
 
   const category = (searchParams.get('category') as CategoryId | null) ?? 'all'

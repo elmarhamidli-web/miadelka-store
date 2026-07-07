@@ -3,9 +3,9 @@ import type { Dictionary } from './types'
 export const en: Dictionary = {
   localeName: 'English',
   flag: '🇬🇧',
-  currency: { symbol: '$', rate: 1, position: 'before', thousand: ',' },
+  currency: { symbol: 'Kč', rate: 24, position: 'after', thousand: ' ' },
   ui: {
-    announce: '✨ Free carbon-neutral delivery over $60 · Easy 30-day returns ✨',
+    announce: '✨ Shipping 90 Kč · Free over 2,000 Kč · Easy 30-day returns ✨',
     search: {
       placeholder: 'Search for hoodies, dresses, sneakers…',
       submit: 'Search',
@@ -33,7 +33,7 @@ export const en: Dictionary = {
       stat2Label: '12k reviews',
       stat3: '100%',
       stat3Label: 'Organic cotton',
-      shipping: 'Free fast delivery',
+      shipping: 'Free shipping over 2,000 Kč',
       bestsellerTag: 'Bestseller',
     },
     categoriesSection: {
@@ -75,7 +75,7 @@ export const en: Dictionary = {
       },
       delivery: {
         title: 'Fast Delivery',
-        text: 'Carbon-neutral shipping in 2–4 days, free on orders over $60.',
+        text: 'Shipping 90 Kč, delivered in 2–4 days. Free on orders over 2,000 Kč.',
       },
       returns: {
         title: 'Easy Returns',
@@ -127,6 +127,7 @@ export const en: Dictionary = {
       view: 'View product',
       addAria: 'Add {name} to cart',
       wishAdd: 'Add to wishlist',
+      outOfStock: 'Out of stock',
       wishRemove: 'Remove from wishlist',
     },
     badges: { Bestseller: 'Bestseller', New: 'New' },
@@ -138,7 +139,10 @@ export const en: Dictionary = {
       emptySub: 'Add some adorable pieces to get started.',
       continue: 'Continue shopping',
       subtotal: 'Subtotal',
-      note: 'Shipping & taxes calculated at checkout.',
+      shipping: 'Shipping',
+      shippingFree: 'Free',
+      total: 'Total',
+      note: 'Prices are final and include VAT.',
       checkout: 'Checkout',
       clear: 'Clear cart',
       checkoutToast: 'Checkout is a prototype — nothing was charged 💖',
@@ -155,7 +159,7 @@ export const en: Dictionary = {
       size: 'Size',
       quantity: 'Quantity',
       addToCart: 'Add to cart',
-      deliveryInfo: 'Free delivery over $60 · ships in 2–4 days',
+      deliveryInfo: 'Shipping 90 Kč, free over 2,000 Kč · ships in 2–4 days',
       returnsInfo: 'Easy 30-day returns & exchanges',
       similar: 'You may also like',
       notFoundTitle: 'Product not found',
@@ -166,13 +170,16 @@ export const en: Dictionary = {
       tagline:
         'Premium, planet-friendly clothing for tiny adventurers. Designed with love, made to be handed down.',
       contactTitle: 'Get in touch',
-      contact: ['✉️ hello@littleonestore.cz', '📞 +1 (800) 555-0142', '📍 14 Maple Lane, Portland, OR'],
+      contact: ['✉️ hello@littleonestore.cz', '📍 Hviezdoslavova 545/41, Brno'],
+      companyTitle: 'Company',
+      company: ['Azruk s.r.o.', 'Company ID (IČO): 14420333', 'Hviezdoslavova 545/41', 'Brno, Czech Republic'],
       secure: '🔒 Secure checkout',
-      rights: '© 2026 Little One Store — a design prototype. All rights reserved.',
+      rights: '© 2026 Little One Store · Azruk s.r.o. All rights reserved.',
+      credit: 'Website created by Rakaprime Consulting Group s.r.o.',
       columns: [
         {
           title: 'Shop',
-          links: ['New Collection', 'Baby', 'Girls', 'Boys', 'Shoes', 'Accessories'],
+          links: ['New Collection', 'Baby', 'Girls', 'Boys'],
         },
         {
           title: 'Help',

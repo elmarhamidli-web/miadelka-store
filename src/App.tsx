@@ -1,5 +1,5 @@
-import { useCallback } from 'react'
-import { Route, Routes, useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useCallback } from 'react'
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
 import { HomePage } from './components/HomePage'
@@ -7,8 +7,12 @@ import { ProductPage } from './components/ProductPage'
 import { CartDrawer } from './components/CartDrawer'
 import { Toasts } from './components/Toasts'
 
+const AdminPanel = lazy(() => import('./admin/AdminPanel'))
+
 export default function App() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const isAdmin = pathname.startsWith('/adminpanel')
 
   const handleNavigate = useCallback(
     (categoryId?: string) => {
@@ -28,6 +32,16 @@ export default function App() {
     },
     [navigate],
   )
+
+  if (isAdmin) {
+    return (
+      <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>Načítání…</div>}>
+        <Routes>
+          <Route path="/adminpanel/*" element={<AdminPanel />} />
+        </Routes>
+      </Suspense>
+    )
+  }
 
   return (
     <>

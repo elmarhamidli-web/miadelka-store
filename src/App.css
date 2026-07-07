@@ -152,6 +152,27 @@
   background: var(--ink);
   color: #fff;
 }
+.lang--inline {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.lang__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+.lang__pill.is-active {
+  background: var(--ink);
+  color: #fff;
+}
 .mobile-menu__lang {
   margin-top: auto;
   padding-top: 18px;
@@ -1063,6 +1084,24 @@
 .footer__contact li {
   list-style: none;
 }
+.footer__company-title {
+  margin-top: 18px;
+}
+.footer__credit {
+  padding: 14px 24px 22px;
+  text-align: center;
+}
+.footer__credit a {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+  opacity: 0.9;
+  transition: opacity 0.2s var(--ease);
+}
+.footer__credit a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
 .footer__bottom {
   display: flex;
   align-items: center;
@@ -1727,8 +1766,27 @@
     gap: 10px;
   }
   .hero__visual {
-    height: 360px;
+    height: 420px;
     order: -1;
+    margin-bottom: 8px;
+  }
+  .hero__card--main {
+    width: auto;
+    height: 88%;
+    aspect-ratio: 3 / 3.6;
+    max-width: 78%;
+  }
+  .hero__card--mini {
+    max-width: 62vw;
+  }
+  .hero__card--mini strong {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 46vw;
+  }
+  .cat-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
   .hero__stats {
     justify-content: flex-start;
@@ -1778,6 +1836,26 @@
 
 @media (max-width: 560px) {
   .header__actions .lang {
+    display: none;
+  }
+  .cat-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .cat-card {
+    padding: 18px 20px;
+  }
+  .cat-card__text strong {
+    font-size: 1.15rem;
+  }
+  .hero__visual {
+    height: 340px;
+  }
+  .hero__card--main {
+    height: 90%;
+    max-width: 84%;
+  }
+  .hero__floater {
     display: none;
   }
   .product-grid {

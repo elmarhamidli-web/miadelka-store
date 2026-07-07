@@ -23,8 +23,11 @@ export function ProductCard({ product }: Props) {
 
   const open = () => navigate(`/product/${product.id}`)
 
+  const soldOut = product.inStock === false
+
   const handleAdd = (e: MouseEvent) => {
     e.stopPropagation()
+    if (soldOut) return
     const size = activeSize ?? product.sizes[0]
     addToCart(product, size, product.colors[activeColor].name, 1)
     celebrate({ x: e.clientX, y: e.clientY })
@@ -54,8 +57,12 @@ export function ProductCard({ product }: Props) {
       onKeyDown={(e) => e.key === 'Enter' && open()}
       aria-label={name}
     >
-      {product.badge && (
-        <span className={`discount-badge ${badgeClass}`}>{badge(product.badge)}</span>
+      {soldOut ? (
+        <span className="discount-badge discount-badge--label">{dict.ui.card.outOfStock}</span>
+      ) : (
+        product.badge && (
+          <span className={`discount-badge ${badgeClass}`}>{badge(product.badge)}</span>
+        )
       )}
 
       <button
@@ -135,6 +142,8 @@ export function ProductCard({ product }: Props) {
           <button
             className="card__add"
             onClick={handleAdd}
+            disabled={soldOut}
+            style={soldOut ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
             aria-label={fmt(dict.ui.card.addAria, { name })}
           >
             <CartPlusIcon />

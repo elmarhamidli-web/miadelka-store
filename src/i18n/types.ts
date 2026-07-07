@@ -1,4 +1,4 @@
-export type Locale = 'cs' | 'en'
+export type Locale = 'cs' | 'en' | 'uk'
 
 export interface PluralForms {
   one: string
@@ -98,7 +98,7 @@ export interface Dictionary {
       emptySub: string
       reset: string
     }
-    card: { view: string; addAria: string; wishAdd: string; wishRemove: string }
+    card: { view: string; addAria: string; wishAdd: string; wishRemove: string; outOfStock: string }
     badges: Record<string, string>
     cart: {
       title: string
@@ -108,6 +108,9 @@ export interface Dictionary {
       emptySub: string
       continue: string
       subtotal: string
+      shipping: string
+      shippingFree: string
+      total: string
       note: string
       checkout: string
       clear: string
@@ -136,8 +139,11 @@ export interface Dictionary {
       tagline: string
       contactTitle: string
       contact: string[]
+      companyTitle: string
+      company: string[]
       secure: string
       rights: string
+      credit: string
       columns: { title: string; links: string[] }[]
     }
     toast: { added: string; wishOn: string; wishOff: string }

@@ -1,15 +1,50 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useI18n } from '../i18n'
 import { dictionaries, locales } from '../i18n/registry'
 
-export function LanguageSwitcher() {
+interface Props {
+  /** Render all languages as a row of buttons (used in the mobile menu). */
+  inline?: boolean
+}
+
+export function LanguageSwitcher({ inline = false }: Props) {
   const { locale, setLocale, dict } = useI18n()
   const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
   const current = dictionaries[locale]
 
+  // Close on click/tap outside — works on both desktop and touch devices.
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open])
+
+  if (inline) {
+    return (
+      <div className="lang lang--inline" role="group" aria-label={dict.ui.nav.language}>
+        {locales.map((l) => (
+          <button
+            key={l}
+            className={`lang__pill ${l === locale ? 'is-active' : ''}`}
+            aria-pressed={l === locale}
+            onClick={() => setLocale(l)}
+          >
+            <span aria-hidden="true">{dictionaries[l].flag}</span> {l.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    )
+  }
+
   return (
-    <div className="lang" onMouseLeave={() => setOpen(false)}>
+    <div className="lang" ref={rootRef}>
       <button
         className="lang__btn"
         onClick={() => setOpen((o) => !o)}

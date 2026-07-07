@@ -50,6 +50,12 @@ export function Footer({ onNavigate }: Props) {
               <li key={c}>{c}</li>
             ))}
           </ul>
+          <h4 className="footer__company-title">{f.companyTitle}</h4>
+          <ul>
+            {f.company.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
         </div>
       </div>
 
@@ -59,6 +65,12 @@ export function Footer({ onNavigate }: Props) {
           <span>{f.secure}</span>
           <span aria-hidden="true">💳 🅿️ 🍎 🟦</span>
         </div>
+      </div>
+
+      <div className="container footer__credit">
+        <a href="https://rakaprime.cz" target="_blank" rel="noopener noreferrer">
+          {f.credit} · rakaprime.cz
+        </a>
       </div>
     </footer>
   )

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
 import { celebrate } from '../lib/confetti'
-import { getProductById, getSimilarProducts } from '../data/products'
+import { useProducts } from '../data/productsStore'
 import { fadeUp, reveal, stagger } from '../lib/motion'
 import { ProductCard } from './ProductCard'
 import {
@@ -33,7 +33,8 @@ export function ProductPage() {
     colorName,
   } = useI18n()
 
-  const product = id ? getProductById(id) : undefined
+  const { byId, similar: getSimilar } = useProducts()
+  const product = id ? byId(id) : undefined
 
   const [size, setSize] = useState<string | null>(null)
   const [color, setColor] = useState(0)
@@ -64,7 +65,7 @@ export function ProductPage() {
   }
 
   const p = dict.ui.product
-  const similar = getSimilarProducts(product)
+  const similar = getSimilar(product)
   const wished = isWishlisted(product.id)
   const name = productName(product.id, product.name)
   const photos =
@@ -72,7 +73,10 @@ export function ProductPage() {
   const thumbs = photos ?? [product.emoji, '🧵', '📏', '🎁']
   const thumbIndex = Math.min(activeThumb, thumbs.length - 1)
 
+  const soldOut = product.inStock === false
+
   const handleAdd = (e: MouseEvent) => {
+    if (soldOut) return
     addToCart(product, size ?? product.sizes[0], product.colors[color].name, qty)
     celebrate({ x: e.clientX, y: e.clientY })
     openCart()
@@ -204,8 +208,13 @@ export function ProductPage() {
                     <PlusIcon />
                   </button>
                 </div>
-                <button className="btn btn--primary btn--lg pdp__add" onClick={handleAdd}>
-                  <CartPlusIcon /> {p.addToCart}
+                <button
+                  className="btn btn--primary btn--lg pdp__add"
+                  onClick={handleAdd}
+                  disabled={soldOut}
+                  style={soldOut ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                >
+                  <CartPlusIcon /> {soldOut ? dict.ui.card.outOfStock : p.addToCart}
                 </button>
                 <button
                   className={`icon-btn pdp__wish ${wished ? 'is-active' : ''}`}

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useMemo, useState } from 'react'
 import type { CategoryId } from '../types'
-import { products } from '../data/products'
+import { useProducts } from '../data/productsStore'
 import { categories } from '../data/categories'
 import { ProductCard } from './ProductCard'
 import { useI18n } from '../i18n'
@@ -14,16 +14,28 @@ interface Props {
 
 type SortKey = 'featured' | 'price-asc' | 'price-desc' | 'rating'
 
-const allSizes = Array.from(new Set(products.flatMap((p) => p.sizes)))
-const allColors = Array.from(
-  new Map(products.flatMap((p) => p.colors).map((c) => [c.name, c])).values(),
-)
-const allAges = Array.from(new Set(products.flatMap((p) => p.ages))).sort()
-const PRICE_STEPS = [20, 40, 60, 100]
+const PRICE_STEPS = [200 / 24, 300 / 24, 400 / 24]
 
 export function Shop({ initialCategory = 'all', searchQuery = '' }: Props) {
   const { dict, formatPrice, plural, categoryName, colorName } = useI18n()
+  const { products } = useProducts()
   const s = dict.ui.shop
+
+  const allSizes = useMemo(
+    () => Array.from(new Set(products.flatMap((p) => p.sizes))),
+    [products],
+  )
+  const allColors = useMemo(
+    () =>
+      Array.from(
+        new Map(products.flatMap((p) => p.colors).map((c) => [c.name, c])).values(),
+      ),
+    [products],
+  )
+  const allAges = useMemo(
+    () => Array.from(new Set(products.flatMap((p) => p.ages))).sort(),
+    [products],
+  )
 
   const [category, setCategory] = useState<CategoryId | 'all'>(initialCategory)
   const [size, setSize] = useState<string | null>(null)
@@ -66,7 +78,7 @@ export function Shop({ initialCategory = 'all', searchQuery = '' }: Props) {
         list.sort((a, b) => Number(b.featured) - Number(a.featured))
     }
     return list
-  }, [category, size, color, age, maxPrice, sort, searchQuery])
+  }, [products, category, size, color, age, maxPrice, sort, searchQuery])
 
   const clearAll = () => {
     setCategory('all')

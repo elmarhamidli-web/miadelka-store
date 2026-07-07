@@ -182,7 +182,7 @@ export function Header({ onNavigate, onSearch }: Props) {
                 ))}
               </nav>
               <div className="mobile-menu__lang">
-                <LanguageSwitcher />
+                <LanguageSwitcher inline />
               </div>
             </motion.aside>
           </>

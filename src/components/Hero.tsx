@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { ArrowIcon } from './icons'
 import { useI18n } from '../i18n'
 import { fadeUp, stagger } from '../lib/motion'
-import { getProductById } from '../data/products'
+import { useProducts } from '../data/productsStore'
 
 interface Props {
   onShop: () => void
@@ -20,9 +20,12 @@ const floaters = [
 export function Hero({ onShop, onExplore }: Props) {
   const { dict, formatPrice, productName } = useI18n()
   const h = dict.ui.hero
-  const heroMain = getProductById('bunny-3piece-set')
-  const heroMiniA = getProductById('ribbed-romper-set')
-  const heroMiniB = getProductById('animal-romper')
+  const { byId, bestSellers, products } = useProducts()
+  const pick = (id: string, index: number) =>
+    byId(id) ?? bestSellers[index] ?? products[index]
+  const heroMain = pick('bunny-3piece-set', 0)
+  const heroMiniA = pick('ribbed-romper-set', 1)
+  const heroMiniB = pick('animal-romper', 2)
 
   return (
     <section className="hero" id="top">

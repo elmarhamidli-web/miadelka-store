@@ -41,6 +41,8 @@ export interface Product {
   featured?: boolean
   seasonal?: boolean
   isNew?: boolean
+  /** Defaults to true when omitted (bundled data). */
+  inStock?: boolean
 }
 
 export interface CartItem {

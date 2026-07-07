@@ -8,6 +8,7 @@ import {
 } from 'react'
 import type { Dictionary, Locale } from './types'
 import { dictionaries, getStoredLocale, storeLocale } from './registry'
+import { getDynamicProductText } from '../data/productsStore'
 
 export type { Locale, Dictionary } from './types'
 
@@ -78,16 +79,21 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   )
 
   const productName = useCallback(
-    (id: string, fallback: string) => dict.products[id]?.name ?? fallback,
-    [dict],
+    (id: string, fallback: string) =>
+      getDynamicProductText(locale, id)?.name ?? dict.products[id]?.name ?? fallback,
+    [dict, locale],
   )
   const productDescription = useCallback(
-    (id: string, fallback: string) => dict.products[id]?.description ?? fallback,
-    [dict],
+    (id: string, fallback: string) =>
+      getDynamicProductText(locale, id)?.description ??
+      dict.products[id]?.description ??
+      fallback,
+    [dict, locale],
   )
   const productMaterial = useCallback(
-    (id: string, fallback: string) => dict.products[id]?.material ?? fallback,
-    [dict],
+    (id: string, fallback: string) =>
+      getDynamicProductText(locale, id)?.material ?? dict.products[id]?.material ?? fallback,
+    [dict, locale],
   )
   const categoryName = useCallback(
     (id: string) => dict.categories[id]?.name ?? id,

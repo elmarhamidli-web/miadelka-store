@@ -1,12 +1,13 @@
 import type { Dictionary, Locale } from './types'
 import { cs } from './cs'
 import { en } from './en'
+import { uk } from './uk'
 
 export const DEFAULT_LOCALE: Locale = 'cs'
 
-export const dictionaries: Record<Locale, Dictionary> = { cs, en }
+export const dictionaries: Record<Locale, Dictionary> = { cs, en, uk }
 
-export const locales: Locale[] = ['cs', 'en']
+export const locales: Locale[] = ['cs', 'en', 'uk']
 
 const STORAGE_KEY = 'littleonestore_locale'
 
