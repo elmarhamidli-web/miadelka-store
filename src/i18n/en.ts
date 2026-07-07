@@ -61,7 +61,7 @@ export const en: Dictionary = {
       tag: 'Limited time',
       titleA: 'New Spring Collection',
       titleHighlight: 'up to 30% off',
-      sub: 'Fresh pastels, breezy cottons and pieces made to twirl in. Bloom into the new season with TinyMode Kids.',
+      sub: 'Fresh pastels, breezy cottons and pieces made to twirl in. Bloom into the new season with Little One Store.',
       cta: 'Shop the sale',
       days: 'days',
       hrs: 'hrs',
@@ -89,10 +89,10 @@ export const en: Dictionary = {
     reviewsSection: {
       eyebrow: 'Loved by parents',
       title: '50,000+ happy little customers',
-      sub: 'Real words from the families who dress their tiny humans in TinyMode.',
+      sub: 'Real words from the families who dress their tiny humans in Little One Store.',
     },
     newsletter: {
-      title: 'Join the TinyMode family',
+      title: 'Join the Little One Store family',
       sub: 'Get 10% off your first order plus early access to new drops, parenting tips and pastel-perfect inspiration.',
       placeholder: 'you@email.com',
       cta: 'Get 10% off',
@@ -166,9 +166,9 @@ export const en: Dictionary = {
       tagline:
         'Premium, planet-friendly clothing for tiny adventurers. Designed with love, made to be handed down.',
       contactTitle: 'Get in touch',
-      contact: ['✉️ hello@tinymode.kids', '📞 +1 (800) 555-0142', '📍 14 Maple Lane, Portland, OR'],
+      contact: ['✉️ hello@littleonestore.cz', '📞 +1 (800) 555-0142', '📍 14 Maple Lane, Portland, OR'],
       secure: '🔒 Secure checkout',
-      rights: '© 2026 TinyMode Kids — a design prototype. All rights reserved.',
+      rights: '© 2026 Little One Store — a design prototype. All rights reserved.',
       columns: [
         {
           title: 'Shop',

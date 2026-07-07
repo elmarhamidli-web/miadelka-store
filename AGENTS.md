@@ -1,7 +1,7 @@
-# TinyMode Kids
+# Little One Store
 
 A modern, frontend-only e-commerce prototype for a children's clothing brand
-("TinyMode Kids"). Built with **Vite + React + TypeScript**. All data is mocked —
+("Little One Store"). Built with **Vite + React + TypeScript**. All data is mocked —
 there is no backend, no payments, and no persistence.
 
 ## Project layout

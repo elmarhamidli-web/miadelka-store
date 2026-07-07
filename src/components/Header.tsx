@@ -70,7 +70,7 @@ export function Header({ onNavigate, onSearch }: Props) {
           >
             <span className="logo__mark" aria-hidden="true">🧸</span>
             <span className="logo__text">
-              TinyMode<span className="logo__accent">Kids</span>
+              LittleOne<span className="logo__accent">Store</span>
             </span>
           </a>
 
@@ -158,7 +158,7 @@ export function Header({ onNavigate, onSearch }: Props) {
             >
               <div className="mobile-menu__head">
                 <span className="logo__text">
-                  TinyMode<span className="logo__accent">Kids</span>
+                  LittleOne<span className="logo__accent">Store</span>
                 </span>
                 <button
                   className="icon-btn"

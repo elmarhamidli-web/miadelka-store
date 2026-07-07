@@ -1,9 +1,9 @@
 {
-  "name": "tinymode-kids",
+  "name": "littleonestore",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "TinyMode Kids — modern children's clothing e-commerce prototype",
+  "description": "Little One Store — modern children's clothing e-commerce prototype",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

@@ -8,7 +8,7 @@ export const dictionaries: Record<Locale, Dictionary> = { cs, en }
 
 export const locales: Locale[] = ['cs', 'en']
 
-const STORAGE_KEY = 'tinymode_locale'
+const STORAGE_KEY = 'littleonestore_locale'
 
 export function getStoredLocale(): Locale {
   if (typeof window === 'undefined') return DEFAULT_LOCALE

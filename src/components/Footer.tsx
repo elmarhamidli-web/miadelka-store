@@ -17,7 +17,7 @@ export function Footer({ onNavigate }: Props) {
           <a className="logo" href="#top" onClick={(e) => { e.preventDefault(); onNavigate() }}>
             <span className="logo__mark" aria-hidden="true">🧸</span>
             <span className="logo__text">
-              TinyMode<span className="logo__accent">Kids</span>
+              LittleOne<span className="logo__accent">Store</span>
             </span>
           </a>
           <p>{f.tagline}</p>

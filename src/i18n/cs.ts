@@ -61,7 +61,7 @@ export const cs: Dictionary = {
       tag: 'Omezená nabídka',
       titleA: 'Nová jarní kolekce',
       titleHighlight: 'sleva až 30 %',
-      sub: 'Svěží pastely, vzdušné bavlny a kousky stvořené k protáčení. Rozkvěťte do nové sezóny s TinyMode Kids.',
+      sub: 'Svěží pastely, vzdušné bavlny a kousky stvořené k protáčení. Rozkvěťte do nové sezóny s Little One Store.',
       cta: 'Nakoupit ve slevě',
       days: 'dní',
       hrs: 'hod',
@@ -89,10 +89,10 @@ export const cs: Dictionary = {
     reviewsSection: {
       eyebrow: 'Milováno rodiči',
       title: '50 000+ spokojených malých zákazníků',
-      sub: 'Skutečná slova rodin, které oblékají své nejmenší do TinyMode.',
+      sub: 'Skutečná slova rodin, které oblékají své nejmenší do Little One Store.',
     },
     newsletter: {
-      title: 'Přidejte se k rodině TinyMode',
+      title: 'Přidejte se k rodině Little One Store',
       sub: 'Získejte 10% slevu na první objednávku a předběžný přístup k novinkám, tipům pro rodiče a pastelové inspiraci.',
       placeholder: 'vas@email.cz',
       cta: 'Získat 10% slevu',
@@ -166,9 +166,9 @@ export const cs: Dictionary = {
       tagline:
         'Prémiové oblečení šetrné k planetě pro malé dobrodruhy. Navrženo s láskou, stvořené k dědění.',
       contactTitle: 'Kontaktujte nás',
-      contact: ['✉️ hello@tinymode.kids', '📞 +420 800 555 0142', '📍 Maple Lane 14, Praha'],
+      contact: ['✉️ hello@littleonestore.cz', '📞 +420 800 555 0142', '📍 Maple Lane 14, Praha'],
       secure: '🔒 Bezpečná pokladna',
-      rights: '© 2026 TinyMode Kids — designový prototyp. Všechna práva vyhrazena.',
+      rights: '© 2026 Little One Store — designový prototyp. Všechna práva vyhrazena.',
       columns: [
         {
           title: 'Nakupovat',
