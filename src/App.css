@@ -2124,22 +2124,10 @@
   .hero__title {
     line-height: 1.18;
   }
-  .hero__card--tl {
-    top: 0;
-    left: 0;
-  }
-  .hero__card--br {
-    bottom: 0;
-    right: 0;
-  }
+  /* The floating collage needs a wide two-column hero; once it stacks,
+     the mini cards collide with the main card — desktop only. */
   .hero__card--mini {
-    max-width: 62vw;
-  }
-  .hero__card--mini strong {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 46vw;
+    display: none;
   }
   .cat-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -2264,7 +2252,7 @@
     height: 340px;
   }
   .hero__card--main {
-    width: min(66%, 250px);
+    width: min(70%, 260px);
   }
   .hero__floater {
     display: none;
