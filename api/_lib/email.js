@@ -160,3 +160,69 @@ export async function sendOrderEmails(order, paid) {
     sendEmail(ownerOrderEmail(order, paid)),
   ])
 }
+
+const CARRIER_LABELS = {
+  zasilkovna: 'Zásilkovna',
+  'ceska-posta': 'Česká pošta',
+  ppl: 'PPL',
+  dpd: 'DPD',
+  gls: 'GLS',
+  balikovna: 'Balíkovna',
+  other: 'Přepravce',
+}
+
+/** Shipment confirmation with the tracking number + link, sent when the
+ *  admin fulfills an order. Czech by default. */
+export function customerShippedEmail(order) {
+  const carrier = CARRIER_LABELS[order.carrier] || order.carrier || 'Přepravce'
+  const trackBtn = order.tracking_url
+    ? `<p style="text-align:center;margin:24px 0 8px;">
+         <a href="${order.tracking_url}" style="display:inline-block;background:#ef5f8d;color:#fff;text-decoration:none;font-weight:700;padding:13px 30px;border-radius:999px;">
+           Sledovat zásilku
+         </a>
+       </p>
+       <p style="text-align:center;color:#8b7d8b;font-size:12px;margin:0 0 4px;word-break:break-all;">
+         <a href="${order.tracking_url}" style="color:#b8577f;">${order.tracking_url}</a>
+       </p>`
+    : ''
+
+  return {
+    to: order.email,
+    replyTo: NOTIFY,
+    subject: `Vaše objednávka #${order.order_number} byla odeslána 📦 — Little One Store`,
+    html: shell(`
+      <h1 style="font-size:22px;color:#3a2e3a;margin:0 0 6px;">Vaše objednávka je na cestě! 📦</h1>
+      <p style="color:#6b5d6b;line-height:1.6;">
+        Dobrý den, ${order.customer_name},<br/>
+        vaši objednávku <strong>#${order.order_number}</strong> jsme právě předali dopravci
+        <strong>${carrier}</strong>. Zásilku můžete sledovat pomocí odkazu níže.
+      </p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#faf3f7;border-radius:12px;">
+        <tr>
+          <td style="padding:14px 18px;color:#6b5d6b;">
+            <strong style="color:#3a2e3a;">Přepravce:</strong> ${carrier}<br/>
+            <strong style="color:#3a2e3a;">Sledovací číslo:</strong> ${order.tracking_number || '—'}
+          </td>
+        </tr>
+      </table>
+      ${trackBtn}
+      <h3 style="font-size:15px;color:#3a2e3a;margin:26px 0 4px;">Objednané zboží</h3>
+      ${itemsTable(order)}
+      <p style="color:#6b5d6b;line-height:1.6;">
+        <strong>Doručovací adresa</strong><br/>
+        ${order.customer_name}<br/>${order.address}<br/>${order.zip} ${order.city}
+      </p>
+      <p style="color:#6b5d6b;line-height:1.6;margin-top:18px;">
+        Máte dotaz k zásilce? Napište nám na
+        <a href="mailto:${NOTIFY}" style="color:#b8577f;">${NOTIFY}</a>
+        nebo zavolejte na <a href="tel:+420604364804" style="color:#b8577f;">+420 604 364 804</a>.
+        Děkujeme, že nakupujete u Little One Store! 💝
+      </p>
+    `),
+  }
+}
+
+/** Send the shipment/tracking e-mail to the customer. Fire-and-forget. */
+export async function sendShippedEmail(order) {
+  await sendEmail(customerShippedEmail(order))
+}
