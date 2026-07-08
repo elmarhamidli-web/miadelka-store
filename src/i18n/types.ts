@@ -151,6 +151,10 @@ export interface Dictionary {
       codNote: string
       card: string
       cardSoon: string
+      cardNote: string
+      payNow: string
+      canceled: string
+      successPaid: string
       summary: string
       placeOrder: string
       placing: string

@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { motion } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
 import { useProducts } from '../data/productsStore'
@@ -13,8 +13,9 @@ const CZK = 24
 
 export function CheckoutPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { cart, subtotal, clearCart } = useStore()
-  const { dict, fmt, formatPrice, productName, colorName } = useI18n()
+  const { dict, locale, fmt, formatPrice, productName, colorName } = useI18n()
   const { settings } = useProducts()
   const c = dict.ui.checkout
 
@@ -27,9 +28,23 @@ export function CheckoutPage() {
     zip: '',
     note: '',
   })
+  const [payment, setPayment] = useState<'card' | 'cod'>('card')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
+  const [paidReturn, setPaidReturn] = useState(false)
+
+  // Returning from Stripe Checkout.
+  useEffect(() => {
+    if (searchParams.get('success') === '1' && searchParams.get('order')) {
+      setOrderNumber(searchParams.get('order'))
+      setPaidReturn(true)
+      clearCart()
+    } else if (searchParams.get('canceled') === '1') {
+      setError(c.canceled)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const FREE_SHIP = settings.free_over_czk / CZK
   const SHIPPING_FEE = settings.shipping_czk / CZK
@@ -45,6 +60,36 @@ export function CheckoutPage() {
     if (!supabase || cart.length === 0) return
     setBusy(true)
     setError('')
+
+    if (payment === 'card') {
+      // Server creates the order + Stripe Checkout Session and validates prices.
+      try {
+        const res = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            locale,
+            customer: form,
+            items: cart.map((item) => ({
+              id: item.product.id,
+              size: item.size,
+              color: item.color,
+              qty: item.quantity,
+            })),
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.url) throw new Error(data.error || 'checkout failed')
+        track('order_placed')
+        window.location.assign(data.url)
+        return
+      } catch {
+        setBusy(false)
+        setError(c.errorGeneric)
+        return
+      }
+    }
+
     const items = cart.map((item) => ({
       id: item.product.id,
       name: item.product.name,
@@ -88,7 +133,11 @@ export function CheckoutPage() {
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
             <span className="checkout__success-emoji" aria-hidden="true">💝</span>
             <h1>{c.successTitle}</h1>
-            <p>{fmt(c.successSub, { number: orderNumber })}</p>
+            <p>
+              {paidReturn
+                ? `${fmt(c.successSub, { number: orderNumber }).split('.')[0]}. ${c.successPaid}`
+                : fmt(c.successSub, { number: orderNumber })}
+            </p>
             <button className="btn btn--primary btn--lg" onClick={() => navigate('/')}>
               {c.backToShop}
             </button>
@@ -180,18 +229,28 @@ export function CheckoutPage() {
 
             <div className="checkout__panel">
               <h2>{c.payment}</h2>
-              <label className="checkout__pay is-active">
-                <input type="radio" name="payment" defaultChecked />
+              <label className={`checkout__pay ${payment === 'card' ? 'is-active' : ''}`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  checked={payment === 'card'}
+                  onChange={() => setPayment('card')}
+                />
+                <div>
+                  <strong>💳 {c.card}</strong>
+                  <span>{c.cardNote}</span>
+                </div>
+              </label>
+              <label className={`checkout__pay ${payment === 'cod' ? 'is-active' : ''}`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  checked={payment === 'cod'}
+                  onChange={() => setPayment('cod')}
+                />
                 <div>
                   <strong>{c.cod}</strong>
                   <span>{c.codNote}</span>
-                </div>
-              </label>
-              <label className="checkout__pay is-disabled">
-                <input type="radio" name="payment" disabled />
-                <div>
-                  <strong>💳 {c.card}</strong>
-                  <span>{c.cardSoon}</span>
                 </div>
               </label>
             </div>
@@ -246,7 +305,7 @@ export function CheckoutPage() {
             {error && <p className="checkout__error">{error}</p>}
 
             <button className="btn btn--primary btn--lg btn--full" disabled={busy}>
-              {busy ? c.placing : c.placeOrder} <ArrowIcon />
+              {busy ? c.placing : payment === 'card' ? c.payNow : c.placeOrder} <ArrowIcon />
             </button>
             <p className="cart__note">{dict.ui.cart.note}</p>
           </aside>
