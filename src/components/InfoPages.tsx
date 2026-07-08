@@ -151,7 +151,7 @@ const TERMS_META: [string, string][] = [
   ['IČO', '14420333'],
   ['DIČ', 'CZ14420333'],
   ['Sídlo', 'Hviezdoslavova 545/41, 627 00 Brno'],
-  ['E-mail', 'little.one.store.cz@gmail.com'],
+  ['E-mail', 'info@littleonestore.cz'],
   ['Telefon', '+420 604 364 804'],
   ['Bankovní účet', '7441532004/5500'],
   ['Internetový obchod', 'Little One Store, web: www.littleonestore.cz'],
@@ -244,7 +244,7 @@ const TERMS: TermsSection[] = [
     h: '11. Odstoupení od smlouvy spotřebitelem',
     ps: [
       '1. Spotřebitel má právo odstoupit od kupní smlouvy uzavřené na dálku bez udání důvodu ve lhůtě 14 dnů od převzetí zboží. Pokud je v jedné objednávce dodáváno několik kusů zboží samostatně, běží lhůta od převzetí posledního kusu.',
-      '2. Odstoupení musí být prodávajícímu oznámeno jednoznačným prohlášením, například e-mailem na little.one.store.cz@gmail.com, písemně na adresu sídla nebo prostřednictvím online formuláře / tlačítka pro odstoupení, pokud bude na webu dostupné.',
+      '2. Odstoupení musí být prodávajícímu oznámeno jednoznačným prohlášením, například e-mailem na info@littleonestore.cz, písemně na adresu sídla nebo prostřednictvím online formuláře / tlačítka pro odstoupení, pokud bude na webu dostupné.',
       '3. Pouhé nepřevzetí zásilky se nepovažuje za odstoupení od smlouvy. Tím nejsou dotčena práva spotřebitele podle právních předpisů.',
       '4. Spotřebitel zašle zboží zpět nejpozději do 14 dnů od odstoupení od smlouvy, pokud se s prodávajícím nedohodne jinak.',
       '5. Zboží musí být vráceno čisté, nepoškozené, bez známek nadměrného používání a pokud možno v původním obalu. Kupující odpovídá za snížení hodnoty zboží způsobené nakládáním nad rámec nutný ke zjištění povahy, vlastností a funkčnosti zboží.',
