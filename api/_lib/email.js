@@ -242,3 +242,41 @@ export function customerShippedEmail(order) {
 export async function sendShippedEmail(order) {
   await sendEmail(customerShippedEmail(order))
 }
+
+/** Review request sent ~20 days after the order. Czech. */
+export function reviewRequestEmail(order) {
+  const itemsList = (order.items || [])
+    .map(
+      (i) =>
+        `<li style="margin:4px 0;color:#3a2e3a;font-weight:600;">${i.name_cs ?? i.name}</li>`,
+    )
+    .join('')
+  const url = `${SITE}/recenze/${order.review_token}`
+  return {
+    to: order.email,
+    replyTo: NOTIFY,
+    subject: `Jak se vám líbil nákup? ⭐ — Little One Store`,
+    html: shell(`
+      <h1 style="font-size:22px;color:#3a2e3a;margin:0 0 6px;">Jak jste byli spokojeni? ⭐</h1>
+      <p style="color:#6b5d6b;line-height:1.6;">
+        Dobrý den, ${order.customer_name},<br/>
+        před časem jste u nás nakoupili (objednávka <strong>#${order.order_number}</strong>).
+        Budeme moc rádi, když nám napíšete, jak jste byli s oblečením spokojeni —
+        pomůžete tím ostatním rodičům při výběru.
+      </p>
+      <ul style="margin:14px 0;padding-left:20px;">${itemsList}</ul>
+      <p style="text-align:center;margin:26px 0 8px;">
+        <a href="${url}" style="display:inline-block;background:#ef5f8d;color:#fff;text-decoration:none;font-weight:700;padding:13px 30px;border-radius:999px;">
+          ⭐ Napsat recenzi
+        </a>
+      </p>
+      <p style="text-align:center;color:#8b7d8b;font-size:12px;margin:0;">
+        Zabere to jen minutku. Děkujeme! 💝
+      </p>
+    `),
+  }
+}
+
+export async function sendReviewRequestEmail(order) {
+  await sendEmail(reviewRequestEmail(order))
+}

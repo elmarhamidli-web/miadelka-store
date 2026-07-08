@@ -88,8 +88,25 @@ export const en: Dictionary = {
     },
     reviewsSection: {
       eyebrow: 'Loved by parents',
-      title: '50,000+ happy little customers',
-      sub: 'Real words from the families who dress their tiny humans in Little One Store.',
+      title: 'Customer reviews',
+      sub: 'Verified reviews from parents who actually shopped with us.',
+    },
+    review: {
+      formTitle: 'Rate your purchase',
+      formIntro:
+        'Thank you for your order! Tell us how happy you were with each product. Reviews appear on the site after approval.',
+      nameLabel: 'Your name (shown with the review)',
+      textPlaceholder: 'How did you like it? Did the size fit? How is the fabric?',
+      submit: 'Send review',
+      thanksTitle: 'Thank you for your review! 💝',
+      thanksSub: 'We received your rating. It will appear on the site once approved.',
+      alreadyTitle: 'Review already sent',
+      alreadySub: 'You have already sent a review for this order. Thank you!',
+      invalidTitle: 'Invalid link',
+      invalidSub: 'This review link is unknown or no longer valid.',
+      errorGeneric: 'We could not send the review. Please try again.',
+      productHeading: 'Reviews',
+      verified: 'Verified purchase',
     },
     newsletter: {
       title: 'Join the Little One Store family',

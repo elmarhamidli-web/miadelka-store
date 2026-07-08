@@ -11,6 +11,7 @@ import {
   SizeGuidePage,
   TermsPage,
 } from './components/InfoPages'
+import { ReviewPage } from './components/ReviewPage'
 import { CartDrawer } from './components/CartDrawer'
 import { Toasts } from './components/Toasts'
 import { track } from './lib/analytics'
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="/velikosti" element={<SizeGuidePage />} />
           <Route path="/doprava-a-vraceni" element={<ShippingReturnsPage />} />
           <Route path="/kontakt" element={<ContactPage />} />
+          <Route path="/recenze/:token" element={<ReviewPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </main>

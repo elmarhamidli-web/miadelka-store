@@ -66,6 +66,22 @@ export interface Dictionary {
       payment: { title: string; text: string }
     }
     reviewsSection: { eyebrow: string; title: string; sub: string }
+    review: {
+      formTitle: string
+      formIntro: string
+      nameLabel: string
+      textPlaceholder: string
+      submit: string
+      thanksTitle: string
+      thanksSub: string
+      alreadyTitle: string
+      alreadySub: string
+      invalidTitle: string
+      invalidSub: string
+      errorGeneric: string
+      productHeading: string
+      verified: string
+    }
     newsletter: {
       title: string
       sub: string

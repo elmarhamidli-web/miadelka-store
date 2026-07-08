@@ -279,6 +279,27 @@
   opacity: 0.5;
 }
 
+/* Reviews moderation */
+.admin__review {
+  align-items: flex-start;
+}
+.admin__review-text {
+  margin: 6px 0;
+  color: #3a2e3a;
+  line-height: 1.5;
+  max-width: 70ch;
+}
+.admin__review--approved {
+  border-left: 4px solid #1f9d63;
+}
+.admin__review--pending {
+  border-left: 4px solid #f0a92e;
+}
+.admin__review--rejected {
+  border-left: 4px solid #d5c8d0;
+  opacity: 0.7;
+}
+
 .admin__toast {
   position: fixed;
   bottom: 22px;

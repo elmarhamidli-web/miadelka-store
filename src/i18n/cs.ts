@@ -88,8 +88,25 @@ export const cs: Dictionary = {
     },
     reviewsSection: {
       eyebrow: 'Milováno rodiči',
-      title: '50 000+ spokojených malých zákazníků',
-      sub: 'Skutečná slova rodin, které oblékají své nejmenší do Little One Store.',
+      title: 'Recenze našich zákazníků',
+      sub: 'Ověřené recenze od rodičů, kteří u nás skutečně nakoupili.',
+    },
+    review: {
+      formTitle: 'Ohodnoťte svůj nákup',
+      formIntro:
+        'Děkujeme za váš nákup! Napište nám prosím, jak jste byli s jednotlivými produkty spokojeni. Recenze zveřejníme po schválení.',
+      nameLabel: 'Vaše jméno (zobrazí se u recenze)',
+      textPlaceholder: 'Jak jste byli spokojeni? Sedla velikost? Jaký je materiál?',
+      submit: 'Odeslat recenzi',
+      thanksTitle: 'Děkujeme za recenzi! 💝',
+      thanksSub: 'Vaše hodnocení jsme přijali. Na webu se objeví, jakmile ho schválíme.',
+      alreadyTitle: 'Recenze už byla odeslána',
+      alreadySub: 'Z této objednávky jste už recenzi poslali. Děkujeme!',
+      invalidTitle: 'Odkaz není platný',
+      invalidSub: 'Tento odkaz na recenzi neznáme nebo už není platný.',
+      errorGeneric: 'Recenzi se nepodařilo odeslat. Zkuste to prosím znovu.',
+      productHeading: 'Recenze',
+      verified: 'Ověřený nákup',
     },
     newsletter: {
       title: 'Přidejte se k rodině Little One Store',

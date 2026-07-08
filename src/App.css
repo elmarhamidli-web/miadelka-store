@@ -1997,6 +1997,83 @@
   font-weight: 700;
 }
 
+/* Review form (public /recenze/<token> page) */
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.review-form__name {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+.review-form__name input,
+.review-form__product textarea {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s var(--ease);
+}
+.review-form__name input:focus,
+.review-form__product textarea:focus {
+  border-color: var(--primary);
+}
+.review-form__product {
+  background: var(--cream);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.review-form__product textarea {
+  resize: vertical;
+  background: #fff;
+}
+.review-form__stars {
+  display: flex;
+  gap: 4px;
+}
+.review-form__stars button {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #ddd0cb;
+  padding: 2px;
+  transition: transform 0.15s var(--ease), color 0.15s var(--ease);
+}
+.review-form__stars button.is-on {
+  color: #ffb13b;
+}
+.review-form__stars button:active {
+  transform: scale(0.9);
+}
+
+/* Product page reviews */
+.product-reviews {
+  margin-top: 60px;
+}
+.product-reviews .section-title {
+  margin-bottom: 24px;
+}
+.product-reviews__avg {
+  font-size: 0.55em;
+  color: var(--ink-soft);
+  font-family: var(--font-body);
+  font-weight: 800;
+  vertical-align: middle;
+}
+.product-reviews__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
 /* ============================================================
    Info / legal pages
    ============================================================ */

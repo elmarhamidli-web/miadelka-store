@@ -8,6 +8,7 @@ import { useProducts } from '../data/productsStore'
 import { track } from '../lib/analytics'
 import { applyProductSeo } from '../lib/seo'
 import { fadeUp, reveal, stagger } from '../lib/motion'
+import { fetchApprovedReviews, type ReviewRow } from '../lib/reviews'
 import { ProductCard } from './ProductCard'
 import {
   HeartIcon,
@@ -249,6 +250,8 @@ export function ProductPage() {
           </div>
         </motion.div>
 
+        <ProductReviews productId={product.id} />
+
         <div className="product-page__similar">
           <h2 className="section-title">{p.similar}</h2>
           <motion.div className="product-grid" variants={stagger} {...reveal}>
@@ -259,5 +262,53 @@ export function ProductPage() {
         </div>
       </div>
     </section>
+  )
+}
+
+/** Approved customer reviews for one product (hidden while empty). */
+function ProductReviews({ productId }: { productId: string }) {
+  const { dict } = useI18n()
+  const [reviews, setReviews] = useState<ReviewRow[]>([])
+
+  useEffect(() => {
+    let alive = true
+    void fetchApprovedReviews(productId, 20).then((r) => {
+      if (alive) setReviews(r)
+    })
+    return () => {
+      alive = false
+    }
+  }, [productId])
+
+  if (reviews.length === 0) return null
+
+  const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+
+  return (
+    <div className="product-reviews">
+      <h2 className="section-title">
+        {dict.ui.review.productHeading}{' '}
+        <span className="product-reviews__avg">
+          ★ {avg.toFixed(1)} · {reviews.length}
+        </span>
+      </h2>
+      <div className="product-reviews__list">
+        {reviews.map((r) => (
+          <figure className="review" key={r.id}>
+            <span className="stars" aria-hidden="true">{'★'.repeat(r.rating)}</span>
+            <blockquote>“{r.text}”</blockquote>
+            <figcaption>
+              <span>
+                <strong>{r.author}</strong>
+                <small>
+                  ✓ {dict.ui.review.verified} ·{' '}
+                  {new Date(r.created_at).toLocaleDateString('cs-CZ')}
+                </small>
+              </span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
   )
 }

@@ -165,7 +165,9 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const [rows, setRows] = useState<ProductRow[]>([])
   const [editing, setEditing] = useState<ProductRow | null>(null)
   const [isNew, setIsNew] = useState(false)
-  const [view, setView] = useState<'products' | 'orders' | 'promos' | 'stats' | 'settings'>('products')
+  const [view, setView] = useState<
+    'products' | 'orders' | 'promos' | 'reviews' | 'stats' | 'settings'
+  >('products')
   const [toast, setToast] = useState('')
   const [filter, setFilter] = useState('')
 
@@ -243,6 +245,12 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
             Slevy a poukazy
           </button>
           <button
+            className={view === 'reviews' ? 'is-active' : ''}
+            onClick={() => setView('reviews')}
+          >
+            Recenze
+          </button>
+          <button
             className={view === 'stats' ? 'is-active' : ''}
             onClick={() => setView('stats')}
           >
@@ -267,6 +275,8 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         <OrdersView notify={notify} />
       ) : view === 'promos' ? (
         <PromosView notify={notify} />
+      ) : view === 'reviews' ? (
+        <ReviewsAdminView notify={notify} products={rows} />
       ) : view === 'stats' ? (
         <StatsView products={rows} />
       ) : editing ? (
@@ -787,6 +797,150 @@ function FulfillModal({
         </form>
       </div>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Reviews moderation                                                  */
+/* ------------------------------------------------------------------ */
+
+interface AdminReviewRow {
+  id: string
+  product_id: string
+  order_number: number | null
+  author: string
+  rating: number
+  text: string
+  status: 'pending' | 'approved' | 'rejected'
+  created_at: string
+}
+
+const REVIEW_FILTERS: { key: 'pending' | 'approved' | 'rejected' | 'all'; label: string }[] = [
+  { key: 'pending', label: 'Čeká na schválení' },
+  { key: 'approved', label: 'Schválené' },
+  { key: 'rejected', label: 'Zamítnuté' },
+  { key: 'all', label: 'Vše' },
+]
+
+function ReviewsAdminView({
+  notify,
+  products,
+}: {
+  notify: (m: string) => void
+  products: ProductRow[]
+}) {
+  const [rows, setRows] = useState<AdminReviewRow[]>([])
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending')
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    const { data, error } = await supabase!
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500)
+    if (!error && data) setRows(data as AdminReviewRow[])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const setStatus = async (id: string, status: AdminReviewRow['status']) => {
+    const { error } = await supabase!.from('reviews').update({ status }).eq('id', id)
+    if (error) notify('Chyba: ' + error.message)
+    else {
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, status } : r)))
+      notify(status === 'approved' ? 'Recenze schválena ✓ Je teď na webu.' : 'Recenze zamítnuta.')
+    }
+  }
+
+  const remove = async (id: string) => {
+    if (!window.confirm('Opravdu smazat tuto recenzi?')) return
+    const { error } = await supabase!.from('reviews').delete().eq('id', id)
+    if (error) notify('Chyba: ' + error.message)
+    else setRows((rs) => rs.filter((r) => r.id !== id))
+  }
+
+  const name = (id: string) => products.find((p) => p.id === id)?.name_cs ?? id
+  const shown = rows.filter((r) => filter === 'all' || r.status === filter)
+  const pendingCount = rows.filter((r) => r.status === 'pending').length
+
+  if (loading)
+    return (
+      <main className="admin__main">
+        <p className="admin__muted">Načítání…</p>
+      </main>
+    )
+
+  return (
+    <main className="admin__main">
+      <div className="admin__range">
+        {REVIEW_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            className={`admin__range-pill ${filter === f.key ? 'is-active' : ''}`}
+            onClick={() => setFilter(f.key)}
+          >
+            {f.label}
+            {f.key === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
+          </button>
+        ))}
+      </div>
+
+      {shown.length === 0 ? (
+        <div className="admin__card admin__card--narrow">
+          <p className="admin__muted">
+            {filter === 'pending'
+              ? 'Žádné recenze nečekají na schválení. Zákazníci dostanou žádost o recenzi e-mailem 20 dní po objednávce.'
+              : 'Žádné recenze v této kategorii.'}
+          </p>
+        </div>
+      ) : (
+        <div className="admin__list">
+          {shown.map((r) => (
+            <div className={`admin__row admin__review admin__review--${r.status}`} key={r.id}>
+              <div className="admin__row-main">
+                <strong>
+                  {'★'.repeat(r.rating)}
+                  {'☆'.repeat(5 - r.rating)} · {name(r.product_id)}
+                </strong>
+                <p className="admin__review-text">“{r.text}”</p>
+                <span className="admin__muted">
+                  {r.author}
+                  {r.order_number ? ` · objednávka #${r.order_number}` : ''} ·{' '}
+                  {new Date(r.created_at).toLocaleDateString('cs-CZ')} ·{' '}
+                  {r.status === 'pending'
+                    ? '⏳ čeká na schválení'
+                    : r.status === 'approved'
+                      ? '✅ zveřejněna'
+                      : '🚫 zamítnuta'}
+                </span>
+              </div>
+              <div className="admin__row-actions">
+                {r.status !== 'approved' && (
+                  <button
+                    className="admin__btn admin__btn--primary"
+                    onClick={() => void setStatus(r.id, 'approved')}
+                  >
+                    ✓ Schválit
+                  </button>
+                )}
+                {r.status !== 'rejected' && (
+                  <button className="admin__btn" onClick={() => void setStatus(r.id, 'rejected')}>
+                    Zamítnout
+                  </button>
+                )}
+                <button className="admin__btn admin__btn--danger" onClick={() => void remove(r.id)}>
+                  Smazat
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </main>
   )
 }
 
