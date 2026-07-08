@@ -90,40 +90,32 @@ export function CheckoutPage() {
       }
     }
 
-    const items = cart.map((item) => ({
-      id: item.product.id,
-      name: item.product.name,
-      name_cs: productName(item.product.id, item.product.name),
-      size: item.size,
-      color: item.color,
-      qty: item.quantity,
-      price_czk: Math.round(item.product.price * CZK),
-    }))
-    const { data, error: err } = await supabase.rpc('place_order', {
-      p: {
-        customer_name: form.name,
-        email: form.email,
-        phone: form.phone,
-        address: form.street,
-        city: form.city,
-        zip: form.zip,
-        note: form.note || null,
-        items,
-        subtotal_czk: Math.round(subtotal * CZK),
-        shipping_czk: Math.round(shipping * CZK),
-        total_czk: Math.round(total * CZK),
-        payment_method: 'cod',
-      },
-    })
-    setBusy(false)
-    if (err || data == null) {
+    // COD / bank transfer — placed server-side so confirmation e-mails go out.
+    try {
+      const res = await fetch('/api/place-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: form,
+          items: cart.map((item) => ({
+            id: item.product.id,
+            size: item.size,
+            color: item.color,
+            qty: item.quantity,
+          })),
+        }),
+      })
+      const data = await res.json()
+      setBusy(false)
+      if (!res.ok || data.orderNumber == null) throw new Error('order failed')
+      track('order_placed')
+      setOrderNumber(String(data.orderNumber))
+      clearCart()
+      window.scrollTo({ top: 0 })
+    } catch {
+      setBusy(false)
       setError(c.errorGeneric)
-      return
     }
-    track('order_placed')
-    setOrderNumber(String(data))
-    clearCart()
-    window.scrollTo({ top: 0 })
   }
 
   if (orderNumber) {

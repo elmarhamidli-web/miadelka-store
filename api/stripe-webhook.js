@@ -1,5 +1,7 @@
-// Stripe webhook: marks orders as paid when the Checkout Session completes.
+// Stripe webhook: marks orders as paid when the Checkout Session completes
+// and sends confirmation e-mails.
 import Stripe from 'stripe'
+import { sendOrderEmails } from './_lib/email.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -64,6 +66,21 @@ export default async function handler(req, res) {
           // 500 so Stripe retries the delivery
           res.status(500).json({ error: 'Order update failed' })
           return
+        }
+        // Send confirmation e-mails (never fail the webhook because of them).
+        try {
+          const rows = await fetch(
+            `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&select=*`,
+            {
+              headers: {
+                apikey: serviceKey,
+                Authorization: `Bearer ${serviceKey}`,
+              },
+            },
+          ).then((r) => (r.ok ? r.json() : []))
+          if (rows[0]) await sendOrderEmails(rows[0], true)
+        } catch (err) {
+          console.error('Order e-mail failed:', err)
         }
       }
     } else if (
