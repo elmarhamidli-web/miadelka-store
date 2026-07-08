@@ -194,6 +194,18 @@ export const cs: Dictionary = {
       backToShop: 'Zpět do obchodu',
       errorGeneric: 'Objednávku se nepodařilo odeslat. Zkuste to prosím znovu.',
       emptyCart: 'Váš košík je prázdný.',
+      promoTitle: 'Slevový kód / dárkový poukaz',
+      promoPlaceholder: 'Zadejte kód',
+      promoApply: 'Použít',
+      promoRemove: 'Odebrat kód',
+      promoDiscount: 'Sleva',
+      promoGift: 'Dárkový poukaz',
+      promoInvalid: 'Tento kód neznáme. Zkontrolujte prosím překlepy.',
+      promoExpired: 'Platnost kódu už bohužel vypršela.',
+      promoExhausted: 'Tento kód už byl vyčerpán.',
+      promoMin: 'Kód platí až od vyšší hodnoty objednávky.',
+      promoEmpty: 'Na poukazu už nezbývá žádný kredit.',
+      promoAlready: 'Kód tohoto typu už máte použitý.',
     },
     footer: {
       tagline:

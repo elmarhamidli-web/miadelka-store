@@ -194,6 +194,18 @@ export const uk: Dictionary = {
       backToShop: 'Назад до магазину',
       errorGeneric: 'Не вдалося надіслати замовлення. Спробуйте ще раз.',
       emptyCart: 'Ваш кошик порожній.',
+      promoTitle: 'Промокод / подарункова картка',
+      promoPlaceholder: 'Введіть код',
+      promoApply: 'Застосувати',
+      promoRemove: 'Видалити код',
+      promoDiscount: 'Знижка',
+      promoGift: 'Подарункова картка',
+      promoInvalid: 'Такого коду не існує. Перевірте, будь ласка, написання.',
+      promoExpired: 'Термін дії коду минув.',
+      promoExhausted: 'Цей код уже використано.',
+      promoMin: 'Код діє від більшої суми замовлення.',
+      promoEmpty: 'На картці не залишилося кредиту.',
+      promoAlready: 'Код цього типу вже застосовано.',
     },
     footer: {
       tagline:

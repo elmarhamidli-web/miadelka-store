@@ -165,7 +165,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const [rows, setRows] = useState<ProductRow[]>([])
   const [editing, setEditing] = useState<ProductRow | null>(null)
   const [isNew, setIsNew] = useState(false)
-  const [view, setView] = useState<'products' | 'orders' | 'stats' | 'settings'>('products')
+  const [view, setView] = useState<'products' | 'orders' | 'promos' | 'stats' | 'settings'>('products')
   const [toast, setToast] = useState('')
   const [filter, setFilter] = useState('')
 
@@ -237,6 +237,12 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
             Objednávky
           </button>
           <button
+            className={view === 'promos' ? 'is-active' : ''}
+            onClick={() => setView('promos')}
+          >
+            Slevy a poukazy
+          </button>
+          <button
             className={view === 'stats' ? 'is-active' : ''}
             onClick={() => setView('stats')}
           >
@@ -259,6 +265,8 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         <SettingsView notify={notify} />
       ) : view === 'orders' ? (
         <OrdersView notify={notify} />
+      ) : view === 'promos' ? (
+        <PromosView notify={notify} />
       ) : view === 'stats' ? (
         <StatsView products={rows} />
       ) : editing ? (
@@ -779,6 +787,371 @@ function FulfillModal({
         </form>
       </div>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Discount codes + gift cards                                         */
+/* ------------------------------------------------------------------ */
+
+interface DiscountRow {
+  id: string
+  code: string
+  type: 'percent' | 'fixed'
+  value: number
+  min_subtotal_czk: number
+  expires_at: string | null
+  max_uses: number | null
+  used_count: number
+  active: boolean
+  note: string | null
+}
+
+interface GiftRow {
+  id: string
+  code: string
+  initial_czk: number
+  balance_czk: number
+  active: boolean
+  note: string | null
+  expires_at: string | null
+}
+
+const genCode = (prefix: string, blocks = 2) => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const block = () =>
+    Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+  return `${prefix}${Array.from({ length: blocks }, block).join('-')}`
+}
+
+function PromosView({ notify }: { notify: (m: string) => void }) {
+  const [codes, setCodes] = useState<DiscountRow[]>([])
+  const [gifts, setGifts] = useState<GiftRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // New discount form
+  const [dCode, setDCode] = useState('')
+  const [dType, setDType] = useState<'percent' | 'fixed'>('percent')
+  const [dValue, setDValue] = useState('10')
+  const [dMin, setDMin] = useState('0')
+  const [dMaxUses, setDMaxUses] = useState('')
+  const [dExpires, setDExpires] = useState('')
+
+  // New gift card form
+  const [gValue, setGValue] = useState('500')
+  const [gCode, setGCode] = useState(genCode('GIFT-'))
+  const [gNote, setGNote] = useState('')
+
+  const load = useCallback(async () => {
+    const [d, g] = await Promise.all([
+      supabase!.from('discount_codes').select('*').order('created_at', { ascending: false }),
+      supabase!.from('gift_cards').select('*').order('created_at', { ascending: false }),
+    ])
+    if (d.data) setCodes(d.data as DiscountRow[])
+    if (g.data) setGifts(g.data as GiftRow[])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const createDiscount = async (e: FormEvent) => {
+    e.preventDefault()
+    const code = dCode.trim().toUpperCase()
+    const value = Number(dValue)
+    if (!code || !(value > 0)) {
+      notify('Vyplňte kód a hodnotu slevy.')
+      return
+    }
+    if (dType === 'percent' && value > 100) {
+      notify('Procentní sleva nemůže být vyšší než 100 %.')
+      return
+    }
+    const { data, error } = await supabase!
+      .from('discount_codes')
+      .insert({
+        code,
+        type: dType,
+        value,
+        min_subtotal_czk: Number(dMin) || 0,
+        max_uses: dMaxUses ? Number(dMaxUses) : null,
+        expires_at: dExpires ? new Date(dExpires + 'T23:59:59').toISOString() : null,
+      })
+      .select()
+      .single()
+    if (error) {
+      notify(error.code === '23505' ? 'Tento kód už existuje.' : 'Chyba: ' + error.message)
+      return
+    }
+    setCodes((cs) => [data as DiscountRow, ...cs])
+    setDCode('')
+    setDValue(dType === 'percent' ? '10' : '100')
+    setDMaxUses('')
+    setDExpires('')
+    notify('Slevový kód vytvořen ✓')
+  }
+
+  const createGift = async (e: FormEvent) => {
+    e.preventDefault()
+    const value = Number(gValue)
+    const code = gCode.trim().toUpperCase()
+    if (!code || !(value > 0)) {
+      notify('Vyplňte kód a hodnotu poukazu.')
+      return
+    }
+    const { data, error } = await supabase!
+      .from('gift_cards')
+      .insert({ code, initial_czk: value, balance_czk: value, note: gNote.trim() || null })
+      .select()
+      .single()
+    if (error) {
+      notify(error.code === '23505' ? 'Tento kód už existuje.' : 'Chyba: ' + error.message)
+      return
+    }
+    setGifts((gs) => [data as GiftRow, ...gs])
+    setGCode(genCode('GIFT-'))
+    setGNote('')
+    notify('Dárkový poukaz vytvořen ✓')
+  }
+
+  const toggleDiscount = async (row: DiscountRow) => {
+    const { error } = await supabase!
+      .from('discount_codes')
+      .update({ active: !row.active })
+      .eq('id', row.id)
+    if (error) notify('Chyba: ' + error.message)
+    else setCodes((cs) => cs.map((x) => (x.id === row.id ? { ...x, active: !row.active } : x)))
+  }
+
+  const toggleGift = async (row: GiftRow) => {
+    const { error } = await supabase!
+      .from('gift_cards')
+      .update({ active: !row.active })
+      .eq('id', row.id)
+    if (error) notify('Chyba: ' + error.message)
+    else setGifts((gs) => gs.map((x) => (x.id === row.id ? { ...x, active: !row.active } : x)))
+  }
+
+  const removeDiscount = async (id: string) => {
+    if (!window.confirm('Opravdu smazat tento slevový kód?')) return
+    const { error } = await supabase!.from('discount_codes').delete().eq('id', id)
+    if (error) notify('Chyba: ' + error.message)
+    else setCodes((cs) => cs.filter((x) => x.id !== id))
+  }
+
+  const removeGift = async (id: string) => {
+    if (!window.confirm('Opravdu smazat tento dárkový poukaz?')) return
+    const { error } = await supabase!.from('gift_cards').delete().eq('id', id)
+    if (error) notify('Chyba: ' + error.message)
+    else setGifts((gs) => gs.filter((x) => x.id !== id))
+  }
+
+  const copy = (text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => notify(`Zkopírováno: ${text}`))
+  }
+
+  if (loading)
+    return (
+      <main className="admin__main">
+        <p className="admin__muted">Načítání…</p>
+      </main>
+    )
+
+  return (
+    <main className="admin__main">
+      <div className="admin__chart-grid">
+        {/* -------- Discount codes -------- */}
+        <div className="admin__card">
+          <h2 className="admin__chart-title">🏷️ Slevové kódy</h2>
+          <form className="admin__promo-form" onSubmit={createDiscount}>
+            <div className="admin__promo-grid">
+              <label>
+                Kód
+                <div className="admin__promo-codegen">
+                  <input
+                    value={dCode}
+                    onChange={(e) => setDCode(e.target.value.toUpperCase())}
+                    placeholder="LETO10"
+                  />
+                  <button
+                    type="button"
+                    className="admin__btn"
+                    title="Vygenerovat kód"
+                    onClick={() => setDCode(genCode('SLEVA-', 1))}
+                  >
+                    🎲
+                  </button>
+                </div>
+              </label>
+              <label>
+                Typ slevy
+                <select value={dType} onChange={(e) => setDType(e.target.value as 'percent' | 'fixed')}>
+                  <option value="percent">Procenta (%)</option>
+                  <option value="fixed">Částka (Kč)</option>
+                </select>
+              </label>
+              <label>
+                {dType === 'percent' ? 'Sleva v %' : 'Sleva v Kč'}
+                <input type="number" min="1" value={dValue} onChange={(e) => setDValue(e.target.value)} />
+              </label>
+              <label>
+                Min. objednávka (Kč)
+                <input type="number" min="0" value={dMin} onChange={(e) => setDMin(e.target.value)} />
+              </label>
+              <label>
+                Max. počet použití
+                <input
+                  type="number"
+                  min="1"
+                  value={dMaxUses}
+                  onChange={(e) => setDMaxUses(e.target.value)}
+                  placeholder="neomezeno"
+                />
+              </label>
+              <label>
+                Platí do
+                <input type="date" value={dExpires} onChange={(e) => setDExpires(e.target.value)} />
+              </label>
+            </div>
+            <button className="admin__btn admin__btn--primary">+ Vytvořit slevový kód</button>
+          </form>
+
+          {codes.length === 0 ? (
+            <p className="admin__muted">Zatím žádné slevové kódy.</p>
+          ) : (
+            <table className="admin__table">
+              <thead>
+                <tr>
+                  <th>Kód</th>
+                  <th>Sleva</th>
+                  <th>Použito</th>
+                  <th>Stav</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {codes.map((r) => (
+                  <tr key={r.id} className={r.active ? '' : 'is-muted'}>
+                    <td>
+                      <button className="admin__code" title="Kopírovat" onClick={() => copy(r.code)}>
+                        {r.code}
+                      </button>
+                      {r.expires_at && (
+                        <div className="admin__muted admin__small">
+                          do {new Date(r.expires_at).toLocaleDateString('cs-CZ')}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {r.type === 'percent' ? `${r.value} %` : `${r.value} Kč`}
+                      {Number(r.min_subtotal_czk) > 0 && (
+                        <div className="admin__muted admin__small">od {r.min_subtotal_czk} Kč</div>
+                      )}
+                    </td>
+                    <td>
+                      {r.used_count}
+                      {r.max_uses != null ? ` / ${r.max_uses}` : '×'}
+                    </td>
+                    <td>
+                      <label className="admin__switch">
+                        <input type="checkbox" checked={r.active} onChange={() => void toggleDiscount(r)} />
+                        <span>{r.active ? 'Aktivní' : 'Vypnutý'}</span>
+                      </label>
+                    </td>
+                    <td>
+                      <button className="admin__btn admin__btn--danger" onClick={() => void removeDiscount(r.id)}>
+                        Smazat
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* -------- Gift cards -------- */}
+        <div className="admin__card">
+          <h2 className="admin__chart-title">🎁 Dárkové poukazy</h2>
+          <form className="admin__promo-form" onSubmit={createGift}>
+            <div className="admin__promo-grid">
+              <label>
+                Kód poukazu
+                <div className="admin__promo-codegen">
+                  <input value={gCode} onChange={(e) => setGCode(e.target.value.toUpperCase())} />
+                  <button
+                    type="button"
+                    className="admin__btn"
+                    title="Vygenerovat kód"
+                    onClick={() => setGCode(genCode('GIFT-'))}
+                  >
+                    🎲
+                  </button>
+                </div>
+              </label>
+              <label>
+                Hodnota (Kč)
+                <input type="number" min="1" value={gValue} onChange={(e) => setGValue(e.target.value)} />
+              </label>
+              <label>
+                Poznámka (pro koho)
+                <input value={gNote} onChange={(e) => setGNote(e.target.value)} placeholder="např. paní Nováková" />
+              </label>
+            </div>
+            <button className="admin__btn admin__btn--primary">+ Vytvořit poukaz</button>
+          </form>
+          <p className="admin__muted admin__small">
+            Kód předejte zákazníkovi (e-mailem či vytištěný) — uplatní ho v pokladně. Zůstatek se
+            čerpá postupně.
+          </p>
+
+          {gifts.length === 0 ? (
+            <p className="admin__muted">Zatím žádné poukazy.</p>
+          ) : (
+            <table className="admin__table">
+              <thead>
+                <tr>
+                  <th>Kód</th>
+                  <th>Zůstatek</th>
+                  <th>Stav</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {gifts.map((r) => (
+                  <tr key={r.id} className={r.active ? '' : 'is-muted'}>
+                    <td>
+                      <button className="admin__code" title="Kopírovat" onClick={() => copy(r.code)}>
+                        {r.code}
+                      </button>
+                      {r.note && <div className="admin__muted admin__small">{r.note}</div>}
+                    </td>
+                    <td>
+                      <strong>{Number(r.balance_czk).toLocaleString('cs-CZ')} Kč</strong>
+                      <div className="admin__muted admin__small">
+                        z {Number(r.initial_czk).toLocaleString('cs-CZ')} Kč
+                      </div>
+                    </td>
+                    <td>
+                      <label className="admin__switch">
+                        <input type="checkbox" checked={r.active} onChange={() => void toggleGift(r)} />
+                        <span>{r.active ? 'Aktivní' : 'Vypnutý'}</span>
+                      </label>
+                    </td>
+                    <td>
+                      <button className="admin__btn admin__btn--danger" onClick={() => void removeGift(r.id)}>
+                        Smazat
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </main>
   )
 }
 

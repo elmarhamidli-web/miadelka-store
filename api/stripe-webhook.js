@@ -2,6 +2,7 @@
 // and sends confirmation e-mails.
 import Stripe from 'stripe'
 import { sendOrderEmails } from './_lib/email.js'
+import { redeemDiscount, redeemGiftCard } from './_lib/promo.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -45,15 +46,17 @@ export default async function handler(req, res) {
       const orderNumber = session.metadata?.order_number
       if (orderNumber && session.payment_status === 'paid') {
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        // `status=eq.new` + return=representation → idempotent: a webhook
+        // retry matches no row and skips e-mails + code redemption.
         const resp = await fetch(
-          `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}`,
+          `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&status=eq.new`,
           {
             method: 'PATCH',
             headers: {
               apikey: serviceKey,
               Authorization: `Bearer ${serviceKey}`,
               'Content-Type': 'application/json',
-              Prefer: 'return=minimal',
+              Prefer: 'return=representation',
             },
             body: JSON.stringify({
               status: 'paid',
@@ -67,20 +70,22 @@ export default async function handler(req, res) {
           res.status(500).json({ error: 'Order update failed' })
           return
         }
-        // Send confirmation e-mails (never fail the webhook because of them).
-        try {
-          const rows = await fetch(
-            `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&select=*`,
-            {
-              headers: {
-                apikey: serviceKey,
-                Authorization: `Bearer ${serviceKey}`,
-              },
-            },
-          ).then((r) => (r.ok ? r.json() : []))
-          if (rows[0]) await sendOrderEmails(rows[0], true)
-        } catch (err) {
-          console.error('Order e-mail failed:', err)
+        const order = (await resp.json())?.[0]
+        if (order) {
+          // Redeem discount code / gift card exactly once, after real payment.
+          try {
+            if (order.discount_code) await redeemDiscount(order.discount_code)
+            if (order.gift_card_code && Number(order.gift_card_czk) > 0)
+              await redeemGiftCard(order.gift_card_code, Number(order.gift_card_czk))
+          } catch (err) {
+            console.error('Promo redemption failed:', err)
+          }
+          // Send confirmation e-mails (never fail the webhook because of them).
+          try {
+            await sendOrderEmails(order, true)
+          } catch (err) {
+            console.error('Order e-mail failed:', err)
+          }
         }
       }
     } else if (

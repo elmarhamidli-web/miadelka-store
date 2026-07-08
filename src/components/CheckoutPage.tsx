@@ -34,6 +34,13 @@ export function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
   const [paidReturn, setPaidReturn] = useState(false)
 
+  // Discount code + gift card (amounts in CZK, validated server-side).
+  const [promoInput, setPromoInput] = useState('')
+  const [promoBusy, setPromoBusy] = useState(false)
+  const [promoErr, setPromoErr] = useState('')
+  const [discount, setDiscount] = useState<{ code: string; czk: number } | null>(null)
+  const [gift, setGift] = useState<{ code: string; czk: number } | null>(null)
+
   // Returning from Stripe Checkout.
   useEffect(() => {
     if (searchParams.get('success') === '1' && searchParams.get('order')) {
@@ -48,12 +55,62 @@ export function CheckoutPage() {
 
   const FREE_SHIP = settings.free_over_czk / CZK
   const SHIPPING_FEE = settings.shipping_czk / CZK
-  const shippingFree = subtotal >= FREE_SHIP
+  const discountAmt = discount ? discount.czk / CZK : 0
+  const giftAmt = gift ? gift.czk / CZK : 0
+  const shippingFree = subtotal - discountAmt >= FREE_SHIP
   const shipping = shippingFree ? 0 : SHIPPING_FEE
-  const total = subtotal + shipping
+  const total = Math.max(0, subtotal - discountAmt + shipping - giftAmt)
 
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const promoErrorMsg = (key?: string) => {
+    switch (key) {
+      case 'expired':
+        return c.promoExpired
+      case 'exhausted':
+        return c.promoExhausted
+      case 'min_subtotal':
+        return c.promoMin
+      case 'empty':
+        return c.promoEmpty
+      case 'discount_already':
+      case 'gift_already':
+        return c.promoAlready
+      default:
+        return c.promoInvalid
+    }
+  }
+
+  const applyPromo = async () => {
+    const code = promoInput.trim()
+    if (!code || promoBusy) return
+    setPromoBusy(true)
+    setPromoErr('')
+    try {
+      const res = await fetch('/api/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          items: cart.map((item) => ({ id: item.product.id, qty: item.quantity })),
+          appliedDiscount: discount?.code || null,
+          appliedGift: gift?.code || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.ok === false) {
+        setPromoErr(promoErrorMsg(data.error))
+      } else {
+        if (data.discountCode) setDiscount({ code: data.discountCode, czk: data.discountCzk })
+        if (data.giftCode) setGift({ code: data.giftCode, czk: data.giftCzk })
+        setPromoInput('')
+      }
+    } catch {
+      setPromoErr(c.promoInvalid)
+    }
+    setPromoBusy(false)
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -70,6 +127,8 @@ export function CheckoutPage() {
           body: JSON.stringify({
             locale,
             customer: form,
+            discountCode: discount?.code || null,
+            giftCode: gift?.code || null,
             items: cart.map((item) => ({
               id: item.product.id,
               size: item.size,
@@ -79,8 +138,18 @@ export function CheckoutPage() {
           }),
         })
         const data = await res.json()
-        if (!res.ok || !data.url) throw new Error(data.error || 'checkout failed')
+        if (!res.ok) throw new Error(data.error || 'checkout failed')
         track('order_placed')
+        if (data.paidByGift && data.orderNumber != null) {
+          // Fully covered by the gift card — no card payment needed.
+          setBusy(false)
+          setOrderNumber(String(data.orderNumber))
+          setPaidReturn(true)
+          clearCart()
+          window.scrollTo({ top: 0 })
+          return
+        }
+        if (!data.url) throw new Error('checkout failed')
         window.location.assign(data.url)
         return
       } catch {
@@ -97,6 +166,8 @@ export function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer: form,
+          discountCode: discount?.code || null,
+          giftCode: gift?.code || null,
           items: cart.map((item) => ({
             id: item.product.id,
             size: item.size,
@@ -110,6 +181,7 @@ export function CheckoutPage() {
       if (!res.ok || data.orderNumber == null) throw new Error('order failed')
       track('order_placed')
       setOrderNumber(String(data.orderNumber))
+      if (data.paidByGift) setPaidReturn(true)
       clearCart()
       window.scrollTo({ top: 0 })
     } catch {
@@ -279,15 +351,79 @@ export function CheckoutPage() {
               </div>
             ))}
 
+            <div className="checkout__promo">
+              <label htmlFor="promo-code">{c.promoTitle}</label>
+              <div className="checkout__promo-row">
+                <input
+                  id="promo-code"
+                  value={promoInput}
+                  onChange={(e) => {
+                    setPromoInput(e.target.value)
+                    setPromoErr('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void applyPromo()
+                    }
+                  }}
+                  placeholder={c.promoPlaceholder}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                />
+                <button
+                  type="button"
+                  className="btn btn--soft"
+                  disabled={promoBusy || !promoInput.trim()}
+                  onClick={() => void applyPromo()}
+                >
+                  {promoBusy ? '…' : c.promoApply}
+                </button>
+              </div>
+              {promoErr && <p className="checkout__promo-err">{promoErr}</p>}
+              {discount && (
+                <div className="checkout__promo-chip">
+                  <span>
+                    🏷️ {c.promoDiscount} <strong>{discount.code}</strong>
+                  </span>
+                  <button type="button" aria-label={c.promoRemove} onClick={() => setDiscount(null)}>
+                    ×
+                  </button>
+                </div>
+              )}
+              {gift && (
+                <div className="checkout__promo-chip">
+                  <span>
+                    🎁 {c.promoGift} <strong>{gift.code}</strong>
+                  </span>
+                  <button type="button" aria-label={c.promoRemove} onClick={() => setGift(null)}>
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div className="checkout__totals">
               <div>
                 <span>{dict.ui.cart.subtotal}</span>
                 <span>{formatPrice(subtotal)}</span>
               </div>
+              {discount && (
+                <div className="checkout__promo-line">
+                  <span>{c.promoDiscount} ({discount.code})</span>
+                  <span>−{formatPrice(discountAmt)}</span>
+                </div>
+              )}
               <div>
                 <span>{dict.ui.cart.shipping}</span>
                 <span>{shippingFree ? dict.ui.cart.shippingFree : formatPrice(shipping)}</span>
               </div>
+              {gift && (
+                <div className="checkout__promo-line">
+                  <span>{c.promoGift} ({gift.code})</span>
+                  <span>−{formatPrice(giftAmt)}</span>
+                </div>
+              )}
               <div className="checkout__total">
                 <span>{dict.ui.cart.total}</span>
                 <strong>{formatPrice(total)}</strong>

@@ -49,13 +49,29 @@ function itemsTable(order) {
       </tr>`,
     )
     .join('')
+  const discountRow =
+    Number(order.discount_czk) > 0
+      ? `<tr>
+        <td style="padding:10px 0;color:#1f9d63;">Sleva${order.discount_code ? ` (${order.discount_code})` : ''}</td>
+        <td align="right" style="padding:10px 0;color:#1f9d63;">−${czk(order.discount_czk)}</td>
+      </tr>`
+      : ''
+  const giftRow =
+    Number(order.gift_card_czk) > 0
+      ? `<tr>
+        <td style="padding:10px 0;color:#1f9d63;">Dárkový poukaz${order.gift_card_code ? ` (${order.gift_card_code})` : ''}</td>
+        <td align="right" style="padding:10px 0;color:#1f9d63;">−${czk(order.gift_card_czk)}</td>
+      </tr>`
+      : ''
   return `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;">
       ${rows}
+      ${discountRow}
       <tr>
         <td style="padding:10px 0;color:#8b7d8b;">Doprava</td>
         <td align="right" style="padding:10px 0;color:#8b7d8b;">${order.shipping_czk > 0 ? czk(order.shipping_czk) : 'Zdarma'}</td>
       </tr>
+      ${giftRow}
       <tr>
         <td style="padding:10px 0;font-size:17px;"><strong>Celkem</strong></td>
         <td align="right" style="padding:10px 0;font-size:17px;"><strong>${czk(order.total_czk)}</strong></td>

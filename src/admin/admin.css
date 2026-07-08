@@ -221,6 +221,64 @@
   height: 16px;
   accent-color: #ef5f8d;
 }
+
+/* Discount codes + gift cards */
+.admin__promo-form {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f0e3dd;
+}
+.admin__promo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.admin__promo-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #6b5b6b;
+}
+.admin__promo-grid input,
+.admin__promo-grid select {
+  border: 1.5px solid #eadfd9;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+}
+.admin__promo-codegen {
+  display: flex;
+  gap: 6px;
+}
+.admin__promo-codegen input {
+  flex: 1;
+  min-width: 0;
+  text-transform: uppercase;
+}
+.admin__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  font-size: 0.88rem;
+  background: #fdeee6;
+  border-radius: 8px;
+  padding: 4px 9px;
+  cursor: copy;
+}
+.admin__code:hover {
+  background: #ffe3ec;
+}
+.admin__small {
+  font-size: 0.78rem;
+}
+.admin__table tr.is-muted td {
+  opacity: 0.5;
+}
+
 .admin__toast {
   position: fixed;
   bottom: 22px;

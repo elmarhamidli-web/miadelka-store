@@ -1924,6 +1924,79 @@
   color: var(--ink);
 }
 
+/* Checkout — discount code / gift card */
+.checkout__promo {
+  margin: 18px 0 4px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.checkout__promo > label {
+  display: block;
+  font-weight: 800;
+  font-size: 0.88rem;
+  margin-bottom: 8px;
+}
+.checkout__promo-row {
+  display: flex;
+  gap: 8px;
+}
+.checkout__promo-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color 0.2s var(--ease);
+}
+.checkout__promo-row input:focus {
+  border-color: var(--primary);
+}
+.checkout__promo-row .btn {
+  padding: 11px 20px;
+  font-size: 0.9rem;
+}
+.checkout__promo-err {
+  color: #c0392b;
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-top: 8px;
+}
+.checkout__promo-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: #e9f8ef;
+  color: #1f5e3a;
+  border-radius: var(--radius-sm);
+  padding: 9px 8px 9px 14px;
+  font-size: 0.88rem;
+  margin-top: 10px;
+}
+.checkout__promo-chip button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: #1f5e3a;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s var(--ease);
+}
+.checkout__promo-chip button:hover {
+  background: rgba(31, 94, 58, 0.12);
+}
+.checkout__promo-line span {
+  color: #1f9d63 !important;
+  font-weight: 700;
+}
+
 /* ============================================================
    Info / legal pages
    ============================================================ */

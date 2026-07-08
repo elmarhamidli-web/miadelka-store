@@ -3,6 +3,8 @@
 // can never manipulate amounts. Stripe Products are created on demand and
 // cached in the `stripe_product_id` column.
 import Stripe from 'stripe'
+import { applyPromo, redeemDiscount, redeemGiftCard } from './_lib/promo.js'
+import { sendOrderEmails } from './_lib/email.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
 const SUPABASE_ANON_KEY =
@@ -83,7 +85,7 @@ export default async function handler(req, res) {
     return
   }
   try {
-    const { customer, items, locale } = req.body || {}
+    const { customer, items, locale, discountCode, giftCode } = req.body || {}
     if (
       !customer?.name ||
       !customer?.email ||
@@ -127,13 +129,42 @@ export default async function handler(req, res) {
       })
     }
 
-    // 2. Shipping from settings.
+    // 2. Shipping from settings + discount/gift card validation.
     const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
-    const shippingFree = subtotalCzk >= Number(shippingCfg.free_over_czk)
-    const shippingCzk = shippingFree ? 0 : Number(shippingCfg.shipping_czk)
+    const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode })
+    const { shippingCzk } = promo
+    const shippingFree = shippingCzk === 0
+    const paidByGift = promo.totalCzk === 0
+
+    // Stripe coupons only reduce line items (not shipping) — when a card
+    // payment remains, cap the gift amount at the discounted items total.
+    let giftCzk = promo.giftCzk
+    let totalCzk = promo.totalCzk
+    if (!paidByGift && promo.gift) {
+      giftCzk = Math.min(promo.gift.balanceCzk, subtotalCzk - promo.discountCzk)
+      totalCzk = subtotalCzk - promo.discountCzk - giftCzk + shippingCzk
+    }
 
     // 3. Create the order (status stays "new" until the webhook marks it paid).
+    const orderPayload = {
+      customer_name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.street,
+      city: customer.city,
+      zip: customer.zip,
+      note: customer.note || null,
+      items: orderItems,
+      subtotal_czk: subtotalCzk,
+      shipping_czk: shippingCzk,
+      total_czk: totalCzk,
+      payment_method: paidByGift ? 'gift_card' : 'card',
+      discount_code: promo.discount?.code || null,
+      discount_czk: promo.discountCzk,
+      gift_card_code: giftCzk > 0 ? promo.gift?.code || null : null,
+      gift_card_czk: giftCzk,
+    }
     const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/place_order`, {
       method: 'POST',
       headers: {
@@ -141,25 +172,32 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        p: {
-          customer_name: customer.name,
-          email: customer.email,
-          phone: customer.phone,
-          address: customer.street,
-          city: customer.city,
-          zip: customer.zip,
-          note: customer.note || null,
-          items: orderItems,
-          subtotal_czk: subtotalCzk,
-          shipping_czk: shippingCzk,
-          total_czk: subtotalCzk + shippingCzk,
-          payment_method: 'card',
-        },
-      }),
+      body: JSON.stringify({ p: orderPayload }),
     })
     if (!orderRes.ok) throw new Error('Order creation failed: ' + (await orderRes.text()))
     const orderNumber = await orderRes.json()
+
+    // 3b. Fully covered by the gift card → no Stripe payment needed.
+    if (paidByGift) {
+      if (promo.discount) await redeemDiscount(promo.discount.code)
+      if (promo.gift && promo.giftCzk > 0) await redeemGiftCard(promo.gift.code, promo.giftCzk)
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (serviceKey) {
+        await fetch(`${SUPABASE_URL}/rest/v1/orders?order_number=eq.${orderNumber}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal',
+          },
+          body: JSON.stringify({ status: 'paid', payment_ref: 'gift_card' }),
+        }).catch(() => undefined)
+      }
+      await sendOrderEmails({ ...orderPayload, order_number: orderNumber }, true)
+      res.status(200).json({ paidByGift: true, orderNumber })
+      return
+    }
 
     // 4. Build line items with synced Stripe products.
     const lineItems = []
@@ -176,11 +214,30 @@ export default async function handler(req, res) {
       })
     }
 
-    // 5. Create the Checkout Session.
+    // 5. Discount + gift card as a one-off Stripe coupon (reduces line items).
+    const reductionCzk = promo.discountCzk + giftCzk
+    let discounts
+    if (reductionCzk > 0) {
+      const coupon = await stripe.coupons.create({
+        amount_off: Math.round(Math.min(reductionCzk, subtotalCzk) * 100),
+        currency: 'czk',
+        duration: 'once',
+        name:
+          promo.discount && giftCzk > 0
+            ? 'Sleva + dárkový poukaz'
+            : promo.discount
+              ? `Sleva ${promo.discount.code}`
+              : 'Dárkový poukaz',
+      })
+      discounts = [{ coupon: coupon.id }]
+    }
+
+    // 6. Create the Checkout Session.
     const origin = req.headers.origin || SITE
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
+      discounts,
       customer_email: customer.email,
       locale: locale === 'cs' ? 'cs' : 'auto',
       shipping_options: [

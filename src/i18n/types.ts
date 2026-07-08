@@ -163,6 +163,18 @@ export interface Dictionary {
       backToShop: string
       errorGeneric: string
       emptyCart: string
+      promoTitle: string
+      promoPlaceholder: string
+      promoApply: string
+      promoRemove: string
+      promoDiscount: string
+      promoGift: string
+      promoInvalid: string
+      promoExpired: string
+      promoExhausted: string
+      promoMin: string
+      promoEmpty: string
+      promoAlready: string
     }
     footer: {
       tagline: string

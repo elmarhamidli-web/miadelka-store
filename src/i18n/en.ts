@@ -194,6 +194,18 @@ export const en: Dictionary = {
       backToShop: 'Back to shop',
       errorGeneric: 'We could not place the order. Please try again.',
       emptyCart: 'Your cart is empty.',
+      promoTitle: 'Discount code / gift card',
+      promoPlaceholder: 'Enter code',
+      promoApply: 'Apply',
+      promoRemove: 'Remove code',
+      promoDiscount: 'Discount',
+      promoGift: 'Gift card',
+      promoInvalid: "We don't recognise this code. Please check for typos.",
+      promoExpired: 'This code has expired.',
+      promoExhausted: 'This code has already been fully used.',
+      promoMin: 'This code requires a higher order value.',
+      promoEmpty: 'There is no credit left on this gift card.',
+      promoAlready: 'You already have a code of this type applied.',
     },
     footer: {
       tagline:

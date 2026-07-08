@@ -1,6 +1,8 @@
 // Places a cash-on-delivery / bank-transfer order server-side, with the same
 // price validation as the card flow, and sends confirmation e-mails.
+// Discount codes and gift cards are validated + redeemed here, server-side.
 import { sendOrderEmails } from './_lib/email.js'
+import { applyPromo, redeemDiscount, redeemGiftCard } from './_lib/promo.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
 const SUPABASE_ANON_KEY =
@@ -23,7 +25,7 @@ export default async function handler(req, res) {
     return
   }
   try {
-    const { customer, items } = req.body || {}
+    const { customer, items, discountCode, giftCode } = req.body || {}
     if (
       !customer?.name ||
       !customer?.email ||
@@ -68,8 +70,10 @@ export default async function handler(req, res) {
 
     const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
-    const shippingCzk =
-      subtotalCzk >= Number(shippingCfg.free_over_czk) ? 0 : Number(shippingCfg.shipping_czk)
+
+    // Discounts + gift card — always validated against the DB, never the client.
+    const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode })
+    const paidByGift = promo.totalCzk === 0
 
     const orderPayload = {
       customer_name: customer.name,
@@ -81,9 +85,13 @@ export default async function handler(req, res) {
       note: customer.note || null,
       items: orderItems,
       subtotal_czk: subtotalCzk,
-      shipping_czk: shippingCzk,
-      total_czk: subtotalCzk + shippingCzk,
-      payment_method: 'cod',
+      shipping_czk: promo.shippingCzk,
+      total_czk: promo.totalCzk,
+      payment_method: paidByGift ? 'gift_card' : 'cod',
+      discount_code: promo.discount?.code || null,
+      discount_czk: promo.discountCzk,
+      gift_card_code: promo.gift?.code || null,
+      gift_card_czk: promo.giftCzk,
     }
 
     const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/place_order`, {
@@ -98,9 +106,30 @@ export default async function handler(req, res) {
     if (!orderRes.ok) throw new Error('Order creation failed: ' + (await orderRes.text()))
     const orderNumber = await orderRes.json()
 
-    await sendOrderEmails({ ...orderPayload, order_number: orderNumber }, false)
+    // Redeem the codes now — the order is definitely placed.
+    if (promo.discount) await redeemDiscount(promo.discount.code)
+    if (promo.gift && promo.giftCzk > 0) await redeemGiftCard(promo.gift.code, promo.giftCzk)
 
-    res.status(200).json({ orderNumber })
+    // Fully covered by a gift card → mark as paid right away.
+    if (paidByGift) {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (serviceKey) {
+        await fetch(`${SUPABASE_URL}/rest/v1/orders?order_number=eq.${orderNumber}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal',
+          },
+          body: JSON.stringify({ status: 'paid', payment_ref: 'gift_card' }),
+        }).catch(() => undefined)
+      }
+    }
+
+    await sendOrderEmails({ ...orderPayload, order_number: orderNumber }, paidByGift)
+
+    res.status(200).json({ orderNumber, paidByGift })
   } catch (err) {
     console.error('place-order error:', err)
     res.status(500).json({ error: 'Order failed' })
