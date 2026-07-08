@@ -61,7 +61,9 @@ html {
 
 html,
 body {
-  /* Guard: no page-level horizontal overflow on any viewport */
+  /* Guard: no page-level horizontal overflow on any viewport.
+     `hidden` is the fallback for older iOS Safari; `clip` wins where supported. */
+  overflow-x: hidden;
   overflow-x: clip;
 }
 

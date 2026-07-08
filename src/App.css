@@ -324,6 +324,8 @@
   font-size: clamp(2.4rem, 5.6vw, 4.1rem);
   font-weight: 700;
   color: var(--ink);
+  line-height: 1.16;
+  letter-spacing: -0.005em;
 }
 .hero__title-accent {
   background: linear-gradient(120deg, #ff5d83, #8e7cff);
@@ -367,10 +369,15 @@
   background: var(--line);
 }
 
-/* Hero visual */
+/* Hero visual — the main card is centered with flexbox (not absolute
+   positioning + transforms): survives framer-motion's transform animation
+   and renders identically in Safari, Chrome and Firefox. */
 .hero__visual {
   position: relative;
   height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .hero__card {
   position: absolute;
@@ -379,13 +386,12 @@
   box-shadow: var(--shadow-lg);
 }
 .hero__card--main {
-  /* Centered via inset+margin (NOT transform — framer-motion's y animation
-     overwrites the transform and would un-center the card). */
-  width: 64%;
+  /* Definite width; height derives from aspect-ratio (the reverse —
+     width from height — is unreliable in iOS Safari). */
+  position: relative;
+  width: min(64%, 330px);
   height: auto;
   aspect-ratio: 3 / 3.6;
-  inset: 0;
-  margin: auto;
   background: linear-gradient(150deg, #ffd6f0 0%, #d6c7ff 55%, #c7e0ff 100%);
   display: flex;
   flex-direction: column;
@@ -2127,10 +2133,10 @@
     margin-bottom: 8px;
   }
   .hero__card--main {
-    width: auto;
-    height: 84%;
-    aspect-ratio: 3 / 3.6;
-    max-width: 72%;
+    width: min(60%, 290px);
+  }
+  .hero__title {
+    line-height: 1.18;
   }
   .hero__card--tl {
     top: 0;
@@ -2276,8 +2282,7 @@
     height: 340px;
   }
   .hero__card--main {
-    height: 90%;
-    max-width: 84%;
+    width: min(66%, 250px);
   }
   .hero__floater {
     display: none;
