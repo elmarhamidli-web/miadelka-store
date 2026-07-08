@@ -1264,8 +1264,11 @@
   .checkout__layout {
     grid-template-columns: 1fr;
   }
+  /* On phones the order summary (items, discount code, totals) comes FIRST —
+     otherwise the promo field hides below the whole address form. */
   .checkout__summary {
     position: static;
+    order: -1;
   }
 }
 
