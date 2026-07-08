@@ -59,6 +59,12 @@ html {
   scroll-behavior: smooth;
 }
 
+html,
+body {
+  /* Guard: no page-level horizontal overflow on any viewport */
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   font-family: var(--font-body);

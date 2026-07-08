@@ -1,10 +1,12 @@
+import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n'
+import { InstagramIcon } from './icons'
 
 interface Props {
   onNavigate: (categoryId?: string) => void
 }
 
-const socials = ['📷', '📘', '🎵', '📌', '▶️']
+const INSTAGRAM_URL = 'https://www.instagram.com/_little_one_store_/'
 
 export function Footer({ onNavigate }: Props) {
   const { dict } = useI18n()
@@ -22,11 +24,23 @@ export function Footer({ onNavigate }: Props) {
           </a>
           <p>{f.tagline}</p>
           <div className="footer__socials">
-            {socials.map((s, i) => (
-              <a key={i} href="#" className="footer__social" aria-label="Social link">
-                <span aria-hidden="true">{s}</span>
-              </a>
-            ))}
+            <a
+              href={INSTAGRAM_URL}
+              className="footer__social"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={f.instagramAria}
+            >
+              <InstagramIcon />
+            </a>
+            <a
+              href={INSTAGRAM_URL}
+              className="footer__insta-handle"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              @_little_one_store_
+            </a>
           </div>
         </div>
 
@@ -35,8 +49,8 @@ export function Footer({ onNavigate }: Props) {
             <h4>{col.title}</h4>
             <ul>
               {col.links.map((l) => (
-                <li key={l}>
-                  <a href="#" onClick={(e) => { e.preventDefault(); onNavigate() }}>{l}</a>
+                <li key={l.label}>
+                  <Link to={l.to}>{l.label}</Link>
                 </li>
               ))}
             </ul>
@@ -47,7 +61,15 @@ export function Footer({ onNavigate }: Props) {
           <h4>{f.contactTitle}</h4>
           <ul>
             {f.contact.map((c) => (
-              <li key={c}>{c}</li>
+              <li key={c}>
+                {c.includes('info@littleonestore.cz') ? (
+                  <a href="mailto:info@littleonestore.cz">{c}</a>
+                ) : c.includes('+420') ? (
+                  <a href="tel:+420604364804">{c}</a>
+                ) : (
+                  c
+                )}
+              </li>
             ))}
           </ul>
           <h4 className="footer__company-title">{f.companyTitle}</h4>

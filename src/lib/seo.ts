@@ -60,6 +60,20 @@ export function applyHomeSeo(locale: string, title: string, description: string)
   })
 }
 
+export function applyPageSeo(locale: string, title: string, description: string, path: string) {
+  const full = `${title} · Little One Store`
+  document.title = full
+  document.documentElement.lang = locale
+  setMeta('name', 'description', description.slice(0, 160))
+  setMeta('property', 'og:title', full)
+  setMeta('property', 'og:description', description.slice(0, 200))
+  setMeta('property', 'og:type', 'website')
+  setMeta('property', 'og:url', SITE + path)
+  setMeta('name', 'twitter:card', 'summary')
+  setCanonical(SITE + path)
+  setJsonLd(null)
+}
+
 export function applyProductSeo(
   locale: string,
   product: Product,

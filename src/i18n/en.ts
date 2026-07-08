@@ -199,25 +199,113 @@ export const en: Dictionary = {
       tagline:
         'Premium, planet-friendly clothing for tiny adventurers. Designed with love, made to be handed down.',
       contactTitle: 'Get in touch',
-      contact: ['✉️ hello@littleonestore.cz', '📍 Hviezdoslavova 545/41, Brno'],
+      contact: ['✉️ info@littleonestore.cz', '📞 +420 604 364 804', '📍 Hviezdoslavova 545/41, Brno'],
       companyTitle: 'Company',
       company: ['Azruk s.r.o.', 'Company ID (IČO): 14420333', 'Hviezdoslavova 545/41', 'Brno, Czech Republic'],
       secure: '🔒 Secure checkout',
       rights: '© 2026 Little One Store · Azruk s.r.o. All rights reserved.',
       credit: 'Website created by Rakaprime Consulting Group s.r.o.',
+      instagramAria: 'Little One Store on Instagram',
       columns: [
         {
           title: 'Shop',
-          links: ['New Collection', 'Baby', 'Girls', 'Boys'],
+          links: [
+            { label: 'New Collection', to: '/?category=new-collection' },
+            { label: 'Baby', to: '/?category=baby' },
+            { label: 'Girls', to: '/?category=girls' },
+            { label: 'Boys', to: '/?category=boys' },
+          ],
         },
         {
           title: 'Help',
-          links: ['Size Guide', 'Shipping', 'Returns & Exchanges', 'Track Order', 'Contact Us'],
+          links: [
+            { label: 'Size Guide', to: '/velikosti' },
+            { label: 'Shipping & Returns', to: '/doprava-a-vraceni' },
+            { label: 'Contact Us', to: '/kontakt' },
+          ],
         },
         {
-          title: 'Company',
-          links: ['Our Story', 'Sustainability', 'Careers', 'Press', 'Stores'],
+          title: 'Documents',
+          links: [
+            { label: 'Terms & Conditions', to: '/obchodni-podminky' },
+            { label: 'Complaints', to: '/doprava-a-vraceni#reklamace' },
+          ],
         },
+      ],
+    },
+    pages: {
+      back: 'Back to shop',
+      termsTitle: 'Terms & Conditions',
+      termsNote:
+        'The legally binding version of our Terms & Conditions is available in Czech below.',
+      sizeTitle: 'Size Guide',
+      sizeIntro:
+        "Choose the size according to your child's height. If your child is between two sizes, we recommend the larger one.",
+      sizeColAge: "Child's age",
+      sizeColHeight: "Child's height (cm)",
+      sizeTip:
+        'TIP: If you are not sure about the size, we recommend choosing one size up. Every child grows at their own pace.',
+      sizeRows: [
+        ['0–3 months', '56–62 cm'],
+        ['3–6 months', '62–68 cm'],
+        ['6–9 months', '68–74 cm'],
+        ['9–12 months', '74–80 cm'],
+        ['12–18 months', '80–86 cm'],
+        ['18–24 months', '86–92 cm'],
+        ['2–3 years', '92–98 cm'],
+        ['3–4 years', '98–104 cm'],
+        ['4–5 years', '104–110 cm'],
+        ['5–6 years', '110–116 cm'],
+        ['6–7 years', '116–122 cm'],
+        ['7–8 years', '122–128 cm'],
+        ['8–9 years', '128–134 cm'],
+        ['9–10 years', '134–140 cm'],
+      ],
+      shipTitle: 'Shipping & Returns',
+      shipSections: [
+        {
+          h: '🚚 Shipping',
+          ps: [
+            'Shipping within the Czech Republic costs 90 CZK. Orders over 2,000 CZK ship for free.',
+            'Orders are usually dispatched within 1–3 business days after payment is received (for cash on delivery, after order confirmation). Delivery usually takes 2–4 business days.',
+            'Please check the parcel on delivery. If it is visibly damaged, we recommend writing a damage report with the carrier or refusing the parcel.',
+          ],
+        },
+        {
+          h: '💳 Payment',
+          ps: [
+            'You can pay by card online (securely via Stripe — card, Apple Pay, Google Pay), cash on delivery, or bank transfer to account 7441532004/5500.',
+            'All prices are final and include VAT. Shipping costs are always shown in the cart before you complete your order.',
+          ],
+        },
+        {
+          h: '↩️ Returns',
+          ps: [
+            'You can return goods purchased in our e-shop without giving a reason within 30 days of delivery (beyond the statutory 14-day period).',
+            'Notify us of the withdrawal by e-mail at info@littleonestore.cz — include your order number and bank account for the refund. Send the goods to: Azruk s.r.o., Hviezdoslavova 545/41, 627 00 Brno, Czech Republic.',
+            'The goods must be returned clean, undamaged and, if possible, in the original packaging. We will refund you within 14 days of withdrawal, but no earlier than after receiving the returned goods.',
+            'We are also happy to exchange the size or colour if the requested variant is in stock — just write to us.',
+          ],
+        },
+        {
+          h: '🛠️ Complaints',
+          ps: [
+            'We are responsible for the goods being free of defects on delivery. You can file a complaint by e-mail at info@littleonestore.cz — include your order number, a description of the defect and ideally photos.',
+            'Send the claimed goods to: Azruk s.r.o., Hviezdoslavova 545/41, 627 00 Brno, Czech Republic.',
+            'Complaints are handled without undue delay, within the statutory period of 30 days at the latest. We will inform you of the outcome by e-mail.',
+          ],
+        },
+      ],
+      contactTitle: 'Contact',
+      contactIntro:
+        'Questions about your order, sizing or anything else? Write to us — we usually reply within 24 hours.',
+      contactRows: [
+        { label: 'E-mail', value: 'info@littleonestore.cz', href: 'mailto:info@littleonestore.cz' },
+        { label: 'Phone', value: '+420 604 364 804', href: 'tel:+420604364804' },
+        { label: 'Instagram', value: '@_little_one_store_', href: 'https://www.instagram.com/_little_one_store_/' },
+        { label: 'Address', value: 'Hviezdoslavova 545/41, 627 00 Brno, Czech Republic' },
+        { label: 'Company', value: 'Azruk s.r.o., Company ID 14420333, VAT ID CZ14420333' },
+        { label: 'Bank account', value: '7441532004/5500' },
       ],
     },
     toast: {

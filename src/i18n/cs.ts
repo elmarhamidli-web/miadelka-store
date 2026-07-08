@@ -199,25 +199,112 @@ export const cs: Dictionary = {
       tagline:
         'Prémiové oblečení šetrné k planetě pro malé dobrodruhy. Navrženo s láskou, stvořené k dědění.',
       contactTitle: 'Kontaktujte nás',
-      contact: ['✉️ hello@littleonestore.cz', '📍 Hviezdoslavova 545/41, Brno'],
+      contact: ['✉️ info@littleonestore.cz', '📞 +420 604 364 804', '📍 Hviezdoslavova 545/41, Brno'],
       companyTitle: 'Provozovatel',
       company: ['Azruk s.r.o.', 'IČO: 14420333', 'Hviezdoslavova 545/41', 'Brno'],
       secure: '🔒 Bezpečná pokladna',
       rights: '© 2026 Little One Store · Azruk s.r.o. Všechna práva vyhrazena.',
       credit: 'Web vytvořila Rakaprime Consulting Group s.r.o.',
+      instagramAria: 'Instagram Little One Store',
       columns: [
         {
           title: 'Nakupovat',
-          links: ['Nová kolekce', 'Miminka', 'Holky', 'Kluci'],
+          links: [
+            { label: 'Nová kolekce', to: '/?category=new-collection' },
+            { label: 'Miminka', to: '/?category=baby' },
+            { label: 'Holky', to: '/?category=girls' },
+            { label: 'Kluci', to: '/?category=boys' },
+          ],
         },
         {
           title: 'Pomoc',
-          links: ['Tabulka velikostí', 'Doprava', 'Vrácení a výměny', 'Sledovat objednávku', 'Kontakt'],
+          links: [
+            { label: 'Tabulka velikostí', to: '/velikosti' },
+            { label: 'Doprava a vrácení', to: '/doprava-a-vraceni' },
+            { label: 'Kontakt', to: '/kontakt' },
+          ],
         },
         {
-          title: 'Společnost',
-          links: ['Náš příběh', 'Udržitelnost', 'Kariéra', 'Tisk', 'Prodejny'],
+          title: 'Dokumenty',
+          links: [
+            { label: 'Obchodní podmínky', to: '/obchodni-podminky' },
+            { label: 'Reklamace', to: '/doprava-a-vraceni#reklamace' },
+          ],
         },
+      ],
+    },
+    pages: {
+      back: 'Zpět do obchodu',
+      termsTitle: 'Obchodní podmínky',
+      termsNote: '',
+      sizeTitle: 'Tabulka velikostí',
+      sizeIntro:
+        'Vyberte velikost podle výšky dítěte. Pokud je dítě mezi dvěma velikostmi, doporučujeme zvolit tu větší.',
+      sizeColAge: 'Věk dítěte',
+      sizeColHeight: 'Výška dítěte (cm)',
+      sizeTip:
+        'TIP: Pokud si nejste jistí výběrem velikosti, doporučujeme zvolit o jednu velikost větší. Každé dítě roste individuálně.',
+      sizeRows: [
+        ['0–3 měsíce', '56–62 cm'],
+        ['3–6 měsíců', '62–68 cm'],
+        ['6–9 měsíců', '68–74 cm'],
+        ['9–12 měsíců', '74–80 cm'],
+        ['12–18 měsíců', '80–86 cm'],
+        ['18–24 měsíců', '86–92 cm'],
+        ['2–3 roky', '92–98 cm'],
+        ['3–4 roky', '98–104 cm'],
+        ['4–5 let', '104–110 cm'],
+        ['5–6 let', '110–116 cm'],
+        ['6–7 let', '116–122 cm'],
+        ['7–8 let', '122–128 cm'],
+        ['8–9 let', '128–134 cm'],
+        ['9–10 let', '134–140 cm'],
+      ],
+      shipTitle: 'Doprava a vrácení',
+      shipSections: [
+        {
+          h: '🚚 Doprava',
+          ps: [
+            'Cena dopravy po České republice je 90 Kč. Při objednávce nad 2 000 Kč je doprava zdarma.',
+            'Objednávky zpravidla expedujeme do 1–3 pracovních dnů od přijetí platby (u dobírky od potvrzení objednávky). Doručení obvykle trvá 2–4 pracovní dny.',
+            'Při převzetí zásilky prosím zkontrolujte její neporušenost. Pokud je zásilka zjevně poškozená, doporučujeme sepsat s dopravcem škodní protokol nebo zásilku nepřevzít.',
+          ],
+        },
+        {
+          h: '💳 Platba',
+          ps: [
+            'Platit můžete kartou online (bezpečně přes Stripe — karta, Apple Pay, Google Pay), dobírkou nebo bankovním převodem na účet 7441532004/5500.',
+            'Ceny jsou konečné, včetně DPH. Cena dopravy je vždy uvedena v košíku před dokončením objednávky.',
+          ],
+        },
+        {
+          h: '↩️ Vrácení zboží',
+          ps: [
+            'Zboží zakoupené v našem e-shopu můžete vrátit bez udání důvodu do 30 dnů od převzetí (nad rámec zákonné 14denní lhůty).',
+            'Odstoupení od smlouvy nám oznamte e-mailem na info@littleonestore.cz — uveďte číslo objednávky a číslo účtu pro vrácení peněz. Zboží zašlete na adresu: Azruk s.r.o., Hviezdoslavova 545/41, 627 00 Brno.',
+            'Zboží musí být vráceno čisté, nepoškozené a pokud možno v původním obalu. Peníze vám vrátíme nejpozději do 14 dnů od odstoupení, nejdříve však po obdržení vráceného zboží.',
+            'Rádi vám také vyměníme velikost nebo barvu, pokud je požadovaná varianta skladem — stačí nám napsat.',
+          ],
+        },
+        {
+          h: '🛠️ Reklamace',
+          ps: [
+            'Odpovídáme za to, že zboží při převzetí nemá vady. Reklamaci můžete uplatnit e-mailem na info@littleonestore.cz — uveďte číslo objednávky, popis vady a ideálně přiložte fotografie.',
+            'Reklamované zboží zašlete na adresu: Azruk s.r.o., Hviezdoslavova 545/41, 627 00 Brno.',
+            'Reklamaci vyřídíme bez zbytečného odkladu, nejpozději ve lhůtě stanovené zákonem (30 dnů). O výsledku vás budeme informovat e-mailem.',
+          ],
+        },
+      ],
+      contactTitle: 'Kontakt',
+      contactIntro:
+        'Máte dotaz k objednávce, velikostem nebo čemukoli dalšímu? Napište nám — odpovídáme zpravidla do 24 hodin.',
+      contactRows: [
+        { label: 'E-mail', value: 'info@littleonestore.cz', href: 'mailto:info@littleonestore.cz' },
+        { label: 'Telefon', value: '+420 604 364 804', href: 'tel:+420604364804' },
+        { label: 'Instagram', value: '@_little_one_store_', href: 'https://www.instagram.com/_little_one_store_/' },
+        { label: 'Adresa', value: 'Hviezdoslavova 545/41, 627 00 Brno' },
+        { label: 'Provozovatel', value: 'Azruk s.r.o., IČO 14420333, DIČ CZ14420333' },
+        { label: 'Bankovní účet', value: '7441532004/5500' },
       ],
     },
     toast: {

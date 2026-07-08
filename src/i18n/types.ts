@@ -173,7 +173,24 @@ export interface Dictionary {
       secure: string
       rights: string
       credit: string
-      columns: { title: string; links: string[] }[]
+      instagramAria: string
+      columns: { title: string; links: { label: string; to: string }[] }[]
+    }
+    pages: {
+      back: string
+      termsTitle: string
+      termsNote: string
+      sizeTitle: string
+      sizeIntro: string
+      sizeColAge: string
+      sizeColHeight: string
+      sizeTip: string
+      sizeRows: [string, string][]
+      shipTitle: string
+      shipSections: { h: string; ps: string[] }[]
+      contactTitle: string
+      contactIntro: string
+      contactRows: { label: string; value: string; href?: string }[]
     }
     toast: { added: string; wishOn: string; wishOff: string }
     colors: Record<string, string>

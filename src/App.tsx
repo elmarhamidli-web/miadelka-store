@@ -5,6 +5,12 @@ import { Footer } from './components/Footer'
 import { HomePage } from './components/HomePage'
 import { ProductPage } from './components/ProductPage'
 import { CheckoutPage } from './components/CheckoutPage'
+import {
+  ContactPage,
+  ShippingReturnsPage,
+  SizeGuidePage,
+  TermsPage,
+} from './components/InfoPages'
 import { CartDrawer } from './components/CartDrawer'
 import { Toasts } from './components/Toasts'
 import { track } from './lib/analytics'
@@ -58,6 +64,10 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/product/:id" element={<ProductPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/obchodni-podminky" element={<TermsPage />} />
+          <Route path="/velikosti" element={<SizeGuidePage />} />
+          <Route path="/doprava-a-vraceni" element={<ShippingReturnsPage />} />
+          <Route path="/kontakt" element={<ContactPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </main>
