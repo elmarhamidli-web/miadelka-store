@@ -146,13 +146,6 @@ export function Hero({ onShop, onExplore }: Props) {
             </div>
           </motion.div>
 
-          <motion.div
-            className="hero__chip hero__chip--ship"
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            🚚 {h.shipping}
-          </motion.div>
         </motion.div>
       </div>
     </section>

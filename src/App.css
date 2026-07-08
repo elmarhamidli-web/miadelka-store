@@ -466,20 +466,6 @@
   bottom: 8%;
   right: -6%;
 }
-.hero__chip {
-  position: absolute;
-  background: var(--ink);
-  color: #fff;
-  font-weight: 800;
-  font-size: 0.82rem;
-  padding: 10px 16px;
-  border-radius: 999px;
-  box-shadow: var(--shadow-md);
-}
-.hero__chip--ship {
-  bottom: 16%;
-  left: 2%;
-}
 
 /* ============================================================
    Sections shared
@@ -2145,10 +2131,6 @@
   .hero__card--br {
     bottom: 0;
     right: 0;
-  }
-  .hero__chip--ship {
-    bottom: 2%;
-    left: 0;
   }
   .hero__card--mini {
     max-width: 62vw;
