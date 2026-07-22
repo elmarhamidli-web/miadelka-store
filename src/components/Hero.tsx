@@ -24,8 +24,6 @@ export function Hero({ onShop, onExplore }: Props) {
   const pick = (id: string, index: number) =>
     byId(id) ?? bestSellers[index] ?? products[index]
   const heroMain = pick('bunny-3piece-set', 0)
-  const heroMiniA = pick('ribbed-romper-set', 1)
-  const heroMiniB = pick('animal-romper', 2)
 
   return (
     <section className="hero" id="top">
@@ -119,30 +117,6 @@ export function Hero({ onShop, onExplore }: Props) {
             <div className="hero__card-info">
               <strong>{heroMain ? productName(heroMain.id, heroMain.name) : ''}</strong>
               <span>{heroMain ? formatPrice(heroMain.price) : ''}</span>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="hero__card hero__card--mini hero__card--tl"
-            animate={{ y: [0, 12, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-          >
-            <span>🎀</span>
-            <div>
-              <strong>{heroMiniA ? productName(heroMiniA.id, heroMiniA.name) : ''}</strong>
-              <span>{heroMiniA ? formatPrice(heroMiniA.price) : ''}</span>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="hero__card hero__card--mini hero__card--br"
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 0.9 }}
-          >
-            <span>🧸</span>
-            <div>
-              <strong>{heroMiniB ? productName(heroMiniB.id, heroMiniB.name) : ''}</strong>
-              <span>{heroMiniB ? formatPrice(heroMiniB.price) : ''}</span>
             </div>
           </motion.div>
 
