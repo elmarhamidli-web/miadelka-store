@@ -323,6 +323,28 @@
   font-family: inherit;
   font-size: 0.9rem;
 }
+.admin__stock-product {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+.admin__thumb--sm {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-size: 1.1rem;
+}
+.admin__thumb--sm img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
 .admin__stock-input {
   width: 90px;
   border: 1.5px solid #eadfd9;

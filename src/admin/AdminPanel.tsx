@@ -364,7 +364,9 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
                     {r.badge ? ` · ${r.badge}` : ''}
                     {r.hidden ? ' · skrytý' : ''}
                     {!r.in_stock ? ' · vyprodáno' : ''}
-                    {r.stock_qty != null ? ` · skladem ${r.stock_qty} ks` : ''}
+                    {r.stock_qty != null
+                      ? ` · sklad: ${r.stock_qty} ks`
+                      : ' · sklad: nesleduje se'}
                   </span>
                 </div>
                 <div className="admin__row-actions">
@@ -1052,7 +1054,18 @@ function InventoryView({
             <tbody>
               {products.map((p) => (
                 <tr key={p.id} className={p.stock_qty != null && p.stock_qty <= 0 ? 'is-muted' : ''}>
-                  <td>{p.name_cs ?? p.id}</td>
+                  <td>
+                    <div className="admin__stock-product">
+                      <span className="admin__thumb admin__thumb--sm" style={{ background: p.gradient ?? '#eee' }}>
+                        {p.colors?.[0]?.images?.[0] ? (
+                          <img src={p.colors[0].images[0]} alt="" loading="lazy" />
+                        ) : (
+                          <span>{p.emoji}</span>
+                        )}
+                      </span>
+                      {p.name_cs ?? p.id}
+                    </div>
+                  </td>
                   <td>
                     <input
                       className="admin__stock-input"
