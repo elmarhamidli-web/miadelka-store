@@ -169,6 +169,10 @@ export const en: Dictionary = {
       remove: 'Remove',
     },
     product: {
+      stockAvailable: 'In stock',
+      stockCount: 'In stock: {n} pcs',
+      stockLow: 'Last pieces — only {n} left',
+      stockOut: 'Sold out',
       back: 'Back to collection',
       reviews: 'reviews',
       save: 'Save {amount}',

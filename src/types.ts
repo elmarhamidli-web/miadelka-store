@@ -43,6 +43,8 @@ export interface Product {
   isNew?: boolean
   /** Defaults to true when omitted (bundled data). */
   inStock?: boolean
+  /** Remaining stock (null/undefined = not tracked). */
+  stockQty?: number | null
 }
 
 export interface CartItem {

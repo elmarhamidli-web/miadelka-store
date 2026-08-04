@@ -169,6 +169,10 @@ export const uk: Dictionary = {
       remove: 'Видалити',
     },
     product: {
+      stockAvailable: 'В наявності',
+      stockCount: 'В наявності: {n} шт',
+      stockLow: 'Останні — лише {n} шт',
+      stockOut: 'Розпродано',
       back: 'Назад до колекції',
       reviews: 'відгуків',
       save: 'Ви заощадите {amount}',

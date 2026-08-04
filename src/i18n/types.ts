@@ -137,6 +137,10 @@ export interface Dictionary {
       remove: string
     }
     product: {
+      stockAvailable: string
+      stockCount: string
+      stockLow: string
+      stockOut: string
       back: string
       reviews: string
       save: string

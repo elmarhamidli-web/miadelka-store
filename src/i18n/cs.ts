@@ -169,6 +169,10 @@ export const cs: Dictionary = {
       remove: 'Odebrat',
     },
     product: {
+      stockAvailable: 'Skladem',
+      stockCount: 'Skladem {n} ks',
+      stockLow: 'Poslední kusy — už jen {n} ks',
+      stockOut: 'Vyprodáno — není skladem',
       back: 'Zpět na kolekci',
       reviews: 'recenzí',
       save: 'Ušetříte {amount}',

@@ -365,6 +365,34 @@
   color: #8b7d8b;
 }
 
+.admin__season-mini {
+  display: flex;
+  gap: 6px;
+}
+.admin__season-mini label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #6b5b6b;
+  cursor: pointer;
+}
+.admin__season-mini input {
+  width: 14px;
+  height: 14px;
+  accent-color: #ef5f8d;
+}
+.admin__promo-warn {
+  background: #fff4dd;
+  color: #8a6116;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
 /* Reviews moderation */
 .admin__review {
   align-items: flex-start;

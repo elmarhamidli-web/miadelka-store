@@ -152,6 +152,7 @@ function rowToProduct(row: ProductRow, promos: Promotion[] = []): Product {
     seasonal: row.seasonal,
     isNew: row.is_new,
     inStock: row.in_stock && !soldOutByStock,
+    stockQty: row.stock_qty,
   }
 }
 

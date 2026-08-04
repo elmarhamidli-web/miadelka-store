@@ -294,9 +294,14 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
       ) : view === 'orders' ? (
         <OrdersView notify={notify} />
       ) : view === 'inventory' ? (
-        <InventoryView notify={notify} products={rows} onStockChange={(id, qty) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, stock_qty: qty } : r)))} />
+        <InventoryView
+          notify={notify}
+          products={rows}
+          onStockChange={(id, qty) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, stock_qty: qty } : r)))}
+          onSeasonsChange={(id, seasons) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, seasons } : r)))}
+        />
       ) : view === 'sales' ? (
-        <SalesView notify={notify} />
+        <SalesView notify={notify} products={rows} />
       ) : view === 'promos' ? (
         <PromosView notify={notify} />
       ) : view === 'reviews' ? (
@@ -852,10 +857,12 @@ function InventoryView({
   notify,
   products,
   onStockChange,
+  onSeasonsChange,
 }: {
   notify: (m: string) => void
   products: ProductRow[]
   onStockChange: (id: string, qty: number | null) => void
+  onSeasonsChange: (id: string, seasons: string[]) => void
 }) {
   const [movements, setMovements] = useState<MovementRow[]>([])
   const [deliveryRows, setDeliveryRows] = useState<{ id: string; qty: string }[]>([
@@ -881,6 +888,17 @@ function InventoryView({
   const userEmail = async () => (await supabase!.auth.getUser()).data.user?.email ?? null
 
   const name = (id: string) => products.find((p) => p.id === id)?.name_cs ?? id
+
+  /** Quick season toggle straight from the stock table. */
+  const toggleSeason = async (row: ProductRow, season: string) => {
+    const current = row.seasons ?? []
+    const next = current.includes(season)
+      ? current.filter((s) => s !== season)
+      : [...current, season]
+    const { error } = await supabase!.from('products').update({ seasons: next }).eq('id', row.id)
+    if (error) notify('Chyba: ' + error.message)
+    else onSeasonsChange(row.id, next)
+  }
 
   /** Manual stock correction for a single product (logged as adjustment). */
   const saveAdjustment = async (row: ProductRow) => {
@@ -1028,6 +1046,7 @@ function InventoryView({
                 <th>Produkt</th>
                 <th>Skladem</th>
                 <th></th>
+                <th>Sezóny</th>
               </tr>
             </thead>
             <tbody>
@@ -1051,10 +1070,28 @@ function InventoryView({
                       </button>
                     )}
                   </td>
+                  <td>
+                    <div className="admin__season-mini">
+                      {SEASON_OPTIONS.map((s) => (
+                        <label key={s.id} title={s.label}>
+                          <input
+                            type="checkbox"
+                            checked={(p.seasons ?? []).includes(s.id)}
+                            onChange={() => void toggleSeason(p, s.id)}
+                          />
+                          <span>{s.label.slice(0, 1)}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          <p className="admin__muted admin__small">
+            Sezóny: J = Jaro, L = Léto, P = Podzim, Z = Zima. Používají je sezónní akce v záložce
+            „Akce" — produkt s danou sezónou dostane během akce automaticky slevu.
+          </p>
         </div>
       </div>
 
@@ -1132,7 +1169,12 @@ const toLocalInput = (iso: string) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-function SalesView({ notify }: { notify: (m: string) => void }) {
+function SalesView({ notify, products }: { notify: (m: string) => void; products: ProductRow[] }) {
+  /** How many products a promotion with the given seasons would discount. */
+  const matchCount = (seasons: string[]) =>
+    seasons.length === 0
+      ? products.length
+      : products.filter((p) => (p.seasons ?? []).some((s) => seasons.includes(s))).length
   const [rows, setRows] = useState<PromotionRow[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -1286,6 +1328,11 @@ function SalesView({ notify }: { notify: (m: string) => void }) {
               <span>Zobrazit banner na úvodní stránce</span>
             </label>
           </div>
+          <p className={matchCount(fSeasons) === 0 ? 'admin__promo-warn' : 'admin__muted admin__small'}>
+            {matchCount(fSeasons) === 0
+              ? '⚠ Žádný produkt nemá vybrané sezóny — sleva by se na nic nevztahovala. Sezóny produktům přiřadíte v záložce Sklad.'
+              : `Sleva se bude vztahovat na ${matchCount(fSeasons)} produktů.`}
+          </p>
           <button className="admin__btn admin__btn--primary">+ Vytvořit akci</button>
         </form>
 
@@ -1321,6 +1368,7 @@ function SalesView({ notify }: { notify: (m: string) => void }) {
                       {(r.seasons ?? []).length === 0
                         ? 'všechny produkty'
                         : r.seasons.map((s) => SEASON_OPTIONS.find((x) => x.id === s)?.label ?? s).join(', ')}
+                      <div className="admin__muted">{matchCount(r.seasons ?? [])} produktů</div>
                     </td>
                     <td>
                       <span className={`admin__promo-status admin__promo-status--${st.cls}`}>{st.label}</span>

@@ -176,6 +176,20 @@ export function ProductPage() {
                 )}
               </div>
 
+              <p
+                className={`pdp__stock ${
+                  soldOut ? 'pdp__stock--out' : product.stockQty != null && product.stockQty <= 5 ? 'pdp__stock--low' : ''
+                }`}
+              >
+                {soldOut
+                  ? `✕ ${p.stockOut}`
+                  : product.stockQty != null
+                    ? product.stockQty <= 5
+                      ? `⚠ ${fmt(p.stockLow, { n: String(product.stockQty) })}`
+                      : `✓ ${fmt(p.stockCount, { n: String(product.stockQty) })}`
+                    : `✓ ${p.stockAvailable}`}
+              </p>
+
               <p className="pdp__desc">{productDescription(product.id, product.description)}</p>
 
               <div className="pdp__option">

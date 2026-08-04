@@ -1663,6 +1663,18 @@
   padding: 5px 12px;
   border-radius: 999px;
 }
+.pdp__stock {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: #1f9d63;
+  margin: -6px 0 14px;
+}
+.pdp__stock--low {
+  color: #c97a10;
+}
+.pdp__stock--out {
+  color: #c0392b;
+}
 .pdp__desc {
   color: var(--ink-soft);
   line-height: 1.6;
