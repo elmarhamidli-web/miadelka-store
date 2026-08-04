@@ -10,14 +10,27 @@ export function Newsletter() {
   const n = dict.ui.newsletter
   const [email, setEmail] = useState('')
   const [done, setDone] = useState(false)
+  const [busy, setBusy] = useState(false)
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email) return
-    setDone(true)
-    pushToast(n.toast, '🎉')
-    setEmail('')
-    window.setTimeout(() => setDone(false), 3000)
+    if (!email || busy) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      if (!res.ok) throw new Error('subscribe failed')
+      setDone(true)
+      pushToast(n.toast, '🎉')
+      setEmail('')
+      window.setTimeout(() => setDone(false), 3000)
+    } catch {
+      pushToast('Něco se nepovedlo — zkuste to prosím znovu.', '😔')
+    }
+    setBusy(false)
   }
 
   return (
@@ -36,8 +49,8 @@ export function Newsletter() {
               onChange={(e) => setEmail(e.target.value)}
               aria-label={n.placeholder}
             />
-            <button className="btn btn--primary" type="submit">
-              {done ? n.done : n.cta}
+            <button className="btn btn--primary" type="submit" disabled={busy}>
+              {busy ? '…' : done ? n.done : n.cta}
             </button>
           </form>
           <small className="newsletter__fine">{n.fine}</small>

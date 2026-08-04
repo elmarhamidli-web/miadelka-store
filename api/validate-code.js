@@ -1,7 +1,13 @@
 // Validates a discount code or gift card for the current cart and returns
 // the amounts to display at checkout. Final amounts are always recomputed
 // server-side again when the order is placed.
-import { classifyCode, checkDiscount, checkGiftCard } from './_lib/promo.js'
+import {
+  classifyCode,
+  checkDiscount,
+  checkGiftCard,
+  getActivePromotions,
+  promoPrice,
+} from './_lib/promo.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
 const SUPABASE_ANON_KEY =
@@ -29,16 +35,19 @@ export default async function handler(req, res) {
 
     // Authoritative subtotal from live product prices.
     const ids = [...new Set(items.map((i) => String(i.id)))]
-    const rows = await anonFetch(
-      `products?id=in.(${ids.map((id) => `"${id}"`).join(',')})&select=id,price_czk,hidden,in_stock`,
-    )
+    const [rows, activePromos] = await Promise.all([
+      anonFetch(
+        `products?id=in.(${ids.map((id) => `"${id}"`).join(',')})&select=id,price_czk,hidden,in_stock,stock_qty,seasons`,
+      ),
+      getActivePromotions(),
+    ])
     const byId = Object.fromEntries(rows.map((r) => [r.id, r]))
     let subtotalCzk = 0
     for (const item of items) {
       const row = byId[item.id]
       if (!row || row.hidden || row.in_stock === false) continue
       const qty = Math.min(Math.max(parseInt(item.qty, 10) || 1, 1), 20)
-      subtotalCzk += Number(row.price_czk) * qty
+      subtotalCzk += promoPrice(row, activePromos) * qty
     }
 
     const result = await classifyCode(code, subtotalCzk)

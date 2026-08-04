@@ -280,3 +280,36 @@ export function reviewRequestEmail(order) {
 export async function sendReviewRequestEmail(order) {
   await sendEmail(reviewRequestEmail(order))
 }
+
+/** Welcome e-mail with the personal 10% newsletter code. Czech. */
+export async function sendWelcomeEmail(email, code) {
+  await sendEmail({
+    to: email,
+    replyTo: NOTIFY,
+    subject: 'Vítejte v rodině Little One Store! 💝 Váš kód na 10% slevu',
+    html: shell(`
+      <h1 style="font-size:22px;color:#3a2e3a;margin:0 0 6px;">Vítejte! 💌</h1>
+      <p style="color:#6b5d6b;line-height:1.6;">
+        Děkujeme za přihlášení k odběru novinek Little One Store.
+        Jako poděkování posíláme slíbenou <strong>10% slevu na první objednávku</strong>.
+      </p>
+      <p style="text-align:center;margin:24px 0 6px;">
+        <span style="display:inline-block;background:#fdeee6;border:2px dashed #ef5f8d;color:#3a2e3a;font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:20px;letter-spacing:1px;padding:14px 28px;border-radius:14px;">
+          ${code}
+        </span>
+      </p>
+      <p style="text-align:center;color:#8b7d8b;font-size:12px;margin:0 0 18px;">
+        Kód zadejte v pokladně do pole „Slevový kód". Platí na jeden nákup.
+      </p>
+      <p style="text-align:center;margin:22px 0 8px;">
+        <a href="${SITE}" style="display:inline-block;background:#ef5f8d;color:#fff;text-decoration:none;font-weight:700;padding:13px 30px;border-radius:999px;">
+          Nakupovat
+        </a>
+      </p>
+      <p style="color:#6b5d6b;line-height:1.6;margin-top:18px;">
+        Budeme vám posílat novinky, tipy pro rodiče a přednostní přístup k akcím.
+        Odhlásit se můžete kdykoli odpovědí na tento e-mail.
+      </p>
+    `),
+  })
+}

@@ -3,7 +3,13 @@
 // can never manipulate amounts. Stripe Products are created on demand and
 // cached in the `stripe_product_id` column.
 import Stripe from 'stripe'
-import { applyPromo, redeemDiscount, redeemGiftCard } from './_lib/promo.js'
+import {
+  applyPromo,
+  getActivePromotions,
+  promoPrice,
+  redeemDiscount,
+  redeemGiftCard,
+} from './_lib/promo.js'
 import { sendOrderEmails } from './_lib/email.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
@@ -108,16 +114,25 @@ export default async function handler(req, res) {
     )
     const byId = Object.fromEntries(rows.map((r) => [r.id, r]))
 
+    // Seasonal promotions change the effective price server-side too.
+    const activePromos = await getActivePromotions()
+
     let subtotalCzk = 0
     const orderItems = []
     for (const item of items) {
       const row = byId[item.id]
       const qty = Math.min(Math.max(parseInt(item.qty, 10) || 1, 1), 20)
-      if (!row || row.hidden || row.in_stock === false) {
+      if (
+        !row ||
+        row.hidden ||
+        row.in_stock === false ||
+        (row.stock_qty != null && row.stock_qty <= 0)
+      ) {
         res.status(400).json({ error: `Product unavailable: ${item.id}` })
         return
       }
-      subtotalCzk += Number(row.price_czk) * qty
+      const priceCzk = promoPrice(row, activePromos)
+      subtotalCzk += priceCzk * qty
       orderItems.push({
         id: row.id,
         name: row.name_en || row.name_cs,
@@ -125,7 +140,7 @@ export default async function handler(req, res) {
         size: String(item.size || '').slice(0, 30),
         color: String(item.color || '').slice(0, 40),
         qty,
-        price_czk: Number(row.price_czk),
+        price_czk: priceCzk,
       })
     }
 

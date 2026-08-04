@@ -44,6 +44,8 @@ export interface ProductRow {
   material_cs: string | null
   material_en: string | null
   material_uk: string | null
+  stock_qty: number | null
+  seasons: string[]
 }
 
 export interface SiteSettings {
@@ -51,9 +53,44 @@ export interface SiteSettings {
   free_over_czk: number
 }
 
+export interface Promotion {
+  id: string
+  name: string
+  subtitle: string | null
+  percent: number
+  cta: string | null
+  starts_at: string
+  ends_at: string
+  seasons: string[]
+  banner: boolean
+  active: boolean
+}
+
+export const SEASONS: { id: string; label: string }[] = [
+  { id: 'spring', label: 'Jaro' },
+  { id: 'summer', label: 'Léto' },
+  { id: 'autumn', label: 'Podzim' },
+  { id: 'winter', label: 'Zima' },
+]
+
 export const DEFAULT_SETTINGS: SiteSettings = { shipping_czk: 90, free_over_czk: 2000 }
 
 const CZK_RATE = 24
+
+/** Highest active promotion percentage that applies to a product's seasons.
+ *  A promotion with no seasons applies to every product. */
+export function promoPercentFor(seasons: string[] | null | undefined, promos: Promotion[]): number {
+  const s = seasons ?? []
+  let pct = 0
+  const now = Date.now()
+  for (const p of promos) {
+    if (!p.active) continue
+    if (new Date(p.starts_at).getTime() > now || new Date(p.ends_at).getTime() < now) continue
+    const ps = p.seasons ?? []
+    if (ps.length === 0 || ps.some((x) => s.includes(x))) pct = Math.max(pct, Number(p.percent))
+  }
+  return pct
+}
 
 /* ------------------------------------------------------------------ */
 /* Per-locale product texts fed into i18n at runtime                   */
@@ -66,7 +103,7 @@ export function getDynamicProductText(locale: string, id: string): Texts | undef
   return dynamicTexts[locale]?.[id]
 }
 
-function rowToProduct(row: ProductRow): Product {
+function rowToProduct(row: ProductRow, promos: Promotion[] = []): Product {
   dynamicTexts.cs[row.id] = {
     name: row.name_cs ?? undefined,
     description: row.desc_cs ?? undefined,
@@ -82,12 +119,22 @@ function rowToProduct(row: ProductRow): Product {
     description: row.desc_uk ?? row.desc_cs ?? undefined,
     material: row.material_uk ?? row.material_cs ?? undefined,
   }
+  // Seasonal promotion engine: automatic price reduction + return to normal.
+  const pct = promoPercentFor(row.seasons, promos)
+  const promoPriceCzk = pct > 0 ? Math.round(row.price_czk * (1 - pct / 100)) : row.price_czk
+  const soldOutByStock = row.stock_qty != null && row.stock_qty <= 0
+
   return {
     id: row.id,
     name: row.name_en ?? row.name_cs ?? row.id,
     category: row.category,
-    price: row.price_czk / CZK_RATE,
-    oldPrice: row.old_price_czk ? row.old_price_czk / CZK_RATE : undefined,
+    price: promoPriceCzk / CZK_RATE,
+    oldPrice:
+      pct > 0
+        ? row.price_czk / CZK_RATE
+        : row.old_price_czk
+          ? row.old_price_czk / CZK_RATE
+          : undefined,
     rating: row.rating,
     reviews: row.reviews,
     emoji: row.emoji || '🧸',
@@ -104,7 +151,7 @@ function rowToProduct(row: ProductRow): Product {
     bestSeller: row.best_seller,
     seasonal: row.seasonal,
     isNew: row.is_new,
-    inStock: row.in_stock,
+    inStock: row.in_stock && !soldOutByStock,
   }
 }
 
@@ -120,6 +167,8 @@ interface ProductsContextValue {
   settings: SiteSettings
   byId: (id: string) => Product | undefined
   similar: (product: Product, limit?: number) => Product[]
+  /** Currently running promotion shown in the homepage banner (or null). */
+  bannerPromo: Promotion | null
   /** True once live data has been loaded from the backend. */
   live: boolean
   refresh: () => Promise<void>
@@ -130,20 +179,25 @@ const ProductsContext = createContext<ProductsContextValue | null>(null)
 export function ProductsProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(bundledProducts)
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS)
+  const [promotions, setPromotions] = useState<Promotion[]>([])
   const [live, setLive] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!supabase) return
-    const [prodRes, setRes] = await Promise.all([
+    const [prodRes, setRes, promoRes] = await Promise.all([
       supabase
         .from('products')
         .select('*')
         .eq('hidden', false)
         .order('sort', { ascending: true }),
       supabase.from('site_settings').select('*'),
+      // RLS already limits this to active promotions within their date range.
+      supabase.from('promotions').select('*'),
     ])
+    const promos = (promoRes.data as Promotion[] | null) ?? []
+    setPromotions(promos)
     if (!prodRes.error && prodRes.data && prodRes.data.length > 0) {
-      setProducts((prodRes.data as ProductRow[]).map(rowToProduct))
+      setProducts((prodRes.data as ProductRow[]).map((r) => rowToProduct(r, promos)))
       setLive(true)
     }
     if (!setRes.error && setRes.data) {
@@ -169,12 +223,22 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     const featured = products.filter((p) => p.featured)
     const bestSellers = products.filter((p) => p.bestSeller)
     const seasonal = products.filter((p) => p.seasonal)
+    const now = Date.now()
+    const bannerPromo =
+      promotions.find(
+        (p) =>
+          p.banner &&
+          p.active &&
+          new Date(p.starts_at).getTime() <= now &&
+          new Date(p.ends_at).getTime() > now,
+      ) ?? null
     return {
       products,
       featured,
       bestSellers,
       seasonal,
       settings,
+      bannerPromo,
       live,
       refresh,
       byId: (id) => products.find((p) => p.id === id),
@@ -184,7 +248,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           .concat(products.filter((p) => p.id !== product.id && p.category !== product.category))
           .slice(0, limit),
     }
-  }, [products, settings, live, refresh])
+  }, [products, settings, promotions, live, refresh])
 
   return <ProductsContext.Provider value={value}>{children}</ProductsContext.Provider>
 }

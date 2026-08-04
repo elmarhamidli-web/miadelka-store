@@ -66,6 +66,8 @@ const emptyRow = (): ProductRow => ({
   material_cs: '100 % bavlna',
   material_en: null,
   material_uk: null,
+  stock_qty: null,
+  seasons: [],
 })
 
 /* ------------------------------------------------------------------ */
@@ -166,7 +168,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const [editing, setEditing] = useState<ProductRow | null>(null)
   const [isNew, setIsNew] = useState(false)
   const [view, setView] = useState<
-    'products' | 'orders' | 'promos' | 'reviews' | 'stats' | 'settings'
+    'products' | 'orders' | 'inventory' | 'promos' | 'sales' | 'reviews' | 'subscribers' | 'stats' | 'settings'
   >('products')
   const [toast, setToast] = useState('')
   const [filter, setFilter] = useState('')
@@ -239,6 +241,18 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
             Objednávky
           </button>
           <button
+            className={view === 'inventory' ? 'is-active' : ''}
+            onClick={() => setView('inventory')}
+          >
+            Sklad
+          </button>
+          <button
+            className={view === 'sales' ? 'is-active' : ''}
+            onClick={() => setView('sales')}
+          >
+            Akce
+          </button>
+          <button
             className={view === 'promos' ? 'is-active' : ''}
             onClick={() => setView('promos')}
           >
@@ -249,6 +263,12 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
             onClick={() => setView('reviews')}
           >
             Recenze
+          </button>
+          <button
+            className={view === 'subscribers' ? 'is-active' : ''}
+            onClick={() => setView('subscribers')}
+          >
+            Odběratelé
           </button>
           <button
             className={view === 'stats' ? 'is-active' : ''}
@@ -273,10 +293,16 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         <SettingsView notify={notify} />
       ) : view === 'orders' ? (
         <OrdersView notify={notify} />
+      ) : view === 'inventory' ? (
+        <InventoryView notify={notify} products={rows} onStockChange={(id, qty) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, stock_qty: qty } : r)))} />
+      ) : view === 'sales' ? (
+        <SalesView notify={notify} />
       ) : view === 'promos' ? (
         <PromosView notify={notify} />
       ) : view === 'reviews' ? (
         <ReviewsAdminView notify={notify} products={rows} />
+      ) : view === 'subscribers' ? (
+        <SubscribersView />
       ) : view === 'stats' ? (
         <StatsView products={rows} />
       ) : editing ? (
@@ -333,6 +359,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
                     {r.badge ? ` · ${r.badge}` : ''}
                     {r.hidden ? ' · skrytý' : ''}
                     {!r.in_stock ? ' · vyprodáno' : ''}
+                    {r.stock_qty != null ? ` · skladem ${r.stock_qty} ks` : ''}
                   </span>
                 </div>
                 <div className="admin__row-actions">
@@ -797,6 +824,630 @@ function FulfillModal({
         </form>
       </div>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Inventory (Sklad)                                                   */
+/* ------------------------------------------------------------------ */
+
+interface MovementRow {
+  id: string
+  created_at: string
+  type: 'delivery' | 'order' | 'restock' | 'adjustment'
+  note: string | null
+  order_number: number | null
+  items: { id: string; name?: string; qty: number }[]
+  created_by: string | null
+}
+
+const MOVEMENT_LABELS: Record<string, string> = {
+  delivery: '📦 Naskladnění',
+  order: '🛒 Objednávka',
+  restock: '↩️ Vráceno na sklad',
+  adjustment: '✏️ Ruční úprava',
+}
+
+function InventoryView({
+  notify,
+  products,
+  onStockChange,
+}: {
+  notify: (m: string) => void
+  products: ProductRow[]
+  onStockChange: (id: string, qty: number | null) => void
+}) {
+  const [movements, setMovements] = useState<MovementRow[]>([])
+  const [deliveryRows, setDeliveryRows] = useState<{ id: string; qty: string }[]>([
+    { id: '', qty: '' },
+  ])
+  const [deliveryNote, setDeliveryNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [edited, setEdited] = useState<Record<string, string>>({})
+
+  const loadMovements = useCallback(async () => {
+    const { data } = await supabase!
+      .from('stock_movements')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (data) setMovements(data as MovementRow[])
+  }, [])
+
+  useEffect(() => {
+    void loadMovements()
+  }, [loadMovements])
+
+  const userEmail = async () => (await supabase!.auth.getUser()).data.user?.email ?? null
+
+  const name = (id: string) => products.find((p) => p.id === id)?.name_cs ?? id
+
+  /** Manual stock correction for a single product (logged as adjustment). */
+  const saveAdjustment = async (row: ProductRow) => {
+    const raw = edited[row.id]
+    if (raw === undefined) return
+    const newQty = raw.trim() === '' ? null : Math.max(0, parseInt(raw, 10) || 0)
+    const { error } = await supabase!.from('products').update({ stock_qty: newQty }).eq('id', row.id)
+    if (error) {
+      notify('Chyba: ' + error.message)
+      return
+    }
+    const delta = (newQty ?? 0) - (row.stock_qty ?? 0)
+    if (newQty !== null && delta !== 0) {
+      await supabase!.from('stock_movements').insert({
+        type: 'adjustment',
+        note: 'Ruční úprava stavu',
+        items: [{ id: row.id, name: row.name_cs, qty: delta }],
+        created_by: await userEmail(),
+      })
+    }
+    onStockChange(row.id, newQty)
+    setEdited((e) => {
+      const c = { ...e }
+      delete c[row.id]
+      return c
+    })
+    notify('Stav skladu uložen ✓')
+    void loadMovements()
+  }
+
+  /** Register an incoming delivery: increments stock + writes history. */
+  const submitDelivery = async (e: FormEvent) => {
+    e.preventDefault()
+    const items = deliveryRows
+      .map((r) => ({ id: r.id, qty: parseInt(r.qty, 10) || 0 }))
+      .filter((r) => r.id && r.qty > 0)
+    if (items.length === 0) {
+      notify('Vyberte alespoň jeden produkt a množství.')
+      return
+    }
+    setBusy(true)
+    for (const it of items) {
+      const row = products.find((p) => p.id === it.id)
+      const current = row?.stock_qty ?? 0
+      const { error } = await supabase!
+        .from('products')
+        .update({ stock_qty: current + it.qty })
+        .eq('id', it.id)
+      if (error) {
+        notify('Chyba: ' + error.message)
+        setBusy(false)
+        return
+      }
+      onStockChange(it.id, current + it.qty)
+    }
+    const { error: mErr } = await supabase!.from('stock_movements').insert({
+      type: 'delivery',
+      note: deliveryNote.trim() || null,
+      items: items.map((it) => ({ id: it.id, name: name(it.id), qty: it.qty })),
+      created_by: await userEmail(),
+    })
+    if (mErr) notify('Chyba záznamu: ' + mErr.message)
+    else notify('Naskladnění uloženo ✓')
+    setDeliveryRows([{ id: '', qty: '' }])
+    setDeliveryNote('')
+    setBusy(false)
+    void loadMovements()
+  }
+
+  return (
+    <main className="admin__main">
+      <div className="admin__chart-grid">
+        {/* -------- Incoming delivery -------- */}
+        <div className="admin__card">
+          <h2 className="admin__chart-title">📦 Naskladnit zboží</h2>
+          <form onSubmit={submitDelivery}>
+            {deliveryRows.map((r, i) => (
+              <div className="admin__delivery-row" key={i}>
+                <select
+                  value={r.id}
+                  onChange={(e) =>
+                    setDeliveryRows((rs) => rs.map((x, j) => (j === i ? { ...x, id: e.target.value } : x)))
+                  }
+                >
+                  <option value="">— vyberte produkt —</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name_cs ?? p.id}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="ks"
+                  value={r.qty}
+                  onChange={(e) =>
+                    setDeliveryRows((rs) => rs.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))
+                  }
+                />
+                {deliveryRows.length > 1 && (
+                  <button
+                    type="button"
+                    className="admin__btn admin__btn--danger"
+                    onClick={() => setDeliveryRows((rs) => rs.filter((_, j) => j !== i))}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+            <div className="admin__delivery-actions">
+              <button
+                type="button"
+                className="admin__btn"
+                onClick={() => setDeliveryRows((rs) => [...rs, { id: '', qty: '' }])}
+              >
+                + Další produkt
+              </button>
+            </div>
+            <label className="admin__delivery-note">
+              Poznámka (nepovinné)
+              <input
+                value={deliveryNote}
+                onChange={(e) => setDeliveryNote(e.target.value)}
+                placeholder="např. dodávka od dodavatele XY"
+              />
+            </label>
+            <button className="admin__btn admin__btn--primary" disabled={busy}>
+              {busy ? 'Ukládám…' : '✓ Naskladnit a zapsat do historie'}
+            </button>
+          </form>
+        </div>
+
+        {/* -------- Stock levels -------- */}
+        <div className="admin__card">
+          <h2 className="admin__chart-title">Stav skladu</h2>
+          <p className="admin__muted admin__small">
+            Prázdné pole = sklad se u produktu nesleduje. 0 = vyprodáno (produkt se na webu označí
+            jako nedostupný). Objednávky odečítají kusy automaticky, zrušené objednávky je vrací.
+          </p>
+          <table className="admin__table">
+            <thead>
+              <tr>
+                <th>Produkt</th>
+                <th>Skladem</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id} className={p.stock_qty != null && p.stock_qty <= 0 ? 'is-muted' : ''}>
+                  <td>{p.name_cs ?? p.id}</td>
+                  <td>
+                    <input
+                      className="admin__stock-input"
+                      type="number"
+                      min="0"
+                      placeholder="—"
+                      value={edited[p.id] ?? (p.stock_qty == null ? '' : String(p.stock_qty))}
+                      onChange={(e) => setEdited((s) => ({ ...s, [p.id]: e.target.value }))}
+                    />
+                  </td>
+                  <td>
+                    {edited[p.id] !== undefined && (
+                      <button className="admin__btn admin__btn--primary" onClick={() => void saveAdjustment(p)}>
+                        Uložit
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* -------- Movement history -------- */}
+      <div className="admin__card" style={{ marginTop: 18 }}>
+        <h2 className="admin__chart-title">Historie pohybů</h2>
+        {movements.length === 0 ? (
+          <p className="admin__muted">Zatím žádné pohyby na skladu.</p>
+        ) : (
+          <table className="admin__table">
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Typ</th>
+                <th>Položky</th>
+                <th>Poznámka</th>
+                <th>Kdo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {movements.map((m) => (
+                <tr key={m.id}>
+                  <td>{new Date(m.created_at).toLocaleString('cs-CZ')}</td>
+                  <td>
+                    {MOVEMENT_LABELS[m.type] ?? m.type}
+                    {m.order_number ? ` #${m.order_number}` : ''}
+                  </td>
+                  <td>
+                    {(m.items ?? []).map((it, i) => (
+                      <div key={i}>
+                        <strong>{it.qty > 0 ? `+${it.qty}` : it.qty}</strong>{' '}
+                        {it.name ?? name(it.id)}
+                      </div>
+                    ))}
+                  </td>
+                  <td className="admin__muted">{m.note ?? ''}</td>
+                  <td className="admin__muted">{m.created_by ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </main>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Seasonal promotions (Akce)                                          */
+/* ------------------------------------------------------------------ */
+
+interface PromotionRow {
+  id: string
+  name: string
+  subtitle: string | null
+  percent: number
+  cta: string | null
+  starts_at: string
+  ends_at: string
+  seasons: string[]
+  banner: boolean
+  active: boolean
+}
+
+const SEASON_OPTIONS = [
+  { id: 'spring', label: 'Jaro' },
+  { id: 'summer', label: 'Léto' },
+  { id: 'autumn', label: 'Podzim' },
+  { id: 'winter', label: 'Zima' },
+]
+
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function SalesView({ notify }: { notify: (m: string) => void }) {
+  const [rows, setRows] = useState<PromotionRow[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const [fName, setFName] = useState('')
+  const [fSubtitle, setFSubtitle] = useState('')
+  const [fPercent, setFPercent] = useState('20')
+  const [fCta, setFCta] = useState('Nakoupit ve slevě')
+  const [fStarts, setFStarts] = useState(toLocalInput(new Date().toISOString()))
+  const [fEnds, setFEnds] = useState(
+    toLocalInput(new Date(Date.now() + 7 * 86400000).toISOString()),
+  )
+  const [fSeasons, setFSeasons] = useState<string[]>([])
+  const [fBanner, setFBanner] = useState(true)
+
+  const load = useCallback(async () => {
+    const { data } = await supabase!
+      .from('promotions')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (data) setRows(data as PromotionRow[])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const create = async (e: FormEvent) => {
+    e.preventDefault()
+    const percent = Number(fPercent)
+    if (!fName.trim() || !(percent > 0) || percent > 90) {
+      notify('Vyplňte název a slevu 1–90 %.')
+      return
+    }
+    const starts = new Date(fStarts)
+    const ends = new Date(fEnds)
+    if (!(ends > starts)) {
+      notify('Konec akce musí být po jejím začátku.')
+      return
+    }
+    const { data, error } = await supabase!
+      .from('promotions')
+      .insert({
+        name: fName.trim(),
+        subtitle: fSubtitle.trim() || null,
+        percent,
+        cta: fCta.trim() || null,
+        starts_at: starts.toISOString(),
+        ends_at: ends.toISOString(),
+        seasons: fSeasons,
+        banner: fBanner,
+      })
+      .select()
+      .single()
+    if (error) {
+      notify('Chyba: ' + error.message)
+      return
+    }
+    setRows((rs) => [data as PromotionRow, ...rs])
+    setFName('')
+    setFSubtitle('')
+    notify('Akce vytvořena ✓')
+  }
+
+  const toggle = async (row: PromotionRow) => {
+    const { error } = await supabase!
+      .from('promotions')
+      .update({ active: !row.active })
+      .eq('id', row.id)
+    if (error) notify('Chyba: ' + error.message)
+    else setRows((rs) => rs.map((x) => (x.id === row.id ? { ...x, active: !row.active } : x)))
+  }
+
+  const remove = async (id: string) => {
+    if (!window.confirm('Opravdu smazat tuto akci?')) return
+    const { error } = await supabase!.from('promotions').delete().eq('id', id)
+    if (error) notify('Chyba: ' + error.message)
+    else setRows((rs) => rs.filter((x) => x.id !== id))
+  }
+
+  const statusOf = (r: PromotionRow) => {
+    if (!r.active) return { label: 'Vypnutá', cls: 'off' }
+    const now = Date.now()
+    if (new Date(r.starts_at).getTime() > now) return { label: 'Naplánovaná', cls: 'planned' }
+    if (new Date(r.ends_at).getTime() < now) return { label: 'Skončila', cls: 'ended' }
+    return { label: '● Běží', cls: 'running' }
+  }
+
+  if (loading)
+    return (
+      <main className="admin__main">
+        <p className="admin__muted">Načítání…</p>
+      </main>
+    )
+
+  return (
+    <main className="admin__main">
+      <div className="admin__card">
+        <h2 className="admin__chart-title">🎉 Nová akce / sezónní výprodej</h2>
+        <p className="admin__muted admin__small">
+          Akce se sama spustí a skončí podle zvolených dat. Produkty s vybranou sezónou automaticky
+          dostanou slevu (na webu i v pokladně) a po skončení akce se ceny samy vrátí. Bez vybrané
+          sezóny platí sleva na všechny produkty. „Banner" akci zobrazí na úvodní stránce s
+          odpočtem.
+        </p>
+        <form className="admin__promo-form" onSubmit={create}>
+          <div className="admin__promo-grid">
+            <label>
+              Název akce
+              <input value={fName} onChange={(e) => setFName(e.target.value)} placeholder="Letní výprodej" />
+            </label>
+            <label>
+              Podtitulek
+              <input value={fSubtitle} onChange={(e) => setFSubtitle(e.target.value)} placeholder="Vzdušné kousky za skvělé ceny" />
+            </label>
+            <label>
+              Sleva (%)
+              <input type="number" min="1" max="90" value={fPercent} onChange={(e) => setFPercent(e.target.value)} />
+            </label>
+            <label>
+              Text tlačítka
+              <input value={fCta} onChange={(e) => setFCta(e.target.value)} />
+            </label>
+            <label>
+              Začátek
+              <input type="datetime-local" value={fStarts} onChange={(e) => setFStarts(e.target.value)} />
+            </label>
+            <label>
+              Konec
+              <input type="datetime-local" value={fEnds} onChange={(e) => setFEnds(e.target.value)} />
+            </label>
+          </div>
+          <div className="admin__season-row">
+            <span>Platí pro sezóny:</span>
+            {SEASON_OPTIONS.map((s) => (
+              <label key={s.id} className="admin__switch">
+                <input
+                  type="checkbox"
+                  checked={fSeasons.includes(s.id)}
+                  onChange={(e) =>
+                    setFSeasons((cur) =>
+                      e.target.checked ? [...cur, s.id] : cur.filter((x) => x !== s.id),
+                    )
+                  }
+                />
+                <span>{s.label}</span>
+              </label>
+            ))}
+            <label className="admin__switch">
+              <input type="checkbox" checked={fBanner} onChange={(e) => setFBanner(e.target.checked)} />
+              <span>Zobrazit banner na úvodní stránce</span>
+            </label>
+          </div>
+          <button className="admin__btn admin__btn--primary">+ Vytvořit akci</button>
+        </form>
+
+        {rows.length === 0 ? (
+          <p className="admin__muted">Zatím žádné akce.</p>
+        ) : (
+          <table className="admin__table">
+            <thead>
+              <tr>
+                <th>Akce</th>
+                <th>Sleva</th>
+                <th>Období</th>
+                <th>Sezóny</th>
+                <th>Stav</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const st = statusOf(r)
+                return (
+                  <tr key={r.id} className={st.cls === 'running' ? '' : 'is-muted'}>
+                    <td>
+                      <strong>{r.name}</strong>
+                      {r.banner && <div className="admin__muted admin__small">banner na úvodu</div>}
+                    </td>
+                    <td>{Math.round(Number(r.percent))} %</td>
+                    <td className="admin__small">
+                      {new Date(r.starts_at).toLocaleString('cs-CZ')}
+                      <br />→ {new Date(r.ends_at).toLocaleString('cs-CZ')}
+                    </td>
+                    <td className="admin__small">
+                      {(r.seasons ?? []).length === 0
+                        ? 'všechny produkty'
+                        : r.seasons.map((s) => SEASON_OPTIONS.find((x) => x.id === s)?.label ?? s).join(', ')}
+                    </td>
+                    <td>
+                      <span className={`admin__promo-status admin__promo-status--${st.cls}`}>{st.label}</span>
+                    </td>
+                    <td>
+                      <button className="admin__btn" onClick={() => void toggle(r)}>
+                        {r.active ? 'Vypnout' : 'Zapnout'}
+                      </button>{' '}
+                      <button className="admin__btn admin__btn--danger" onClick={() => void remove(r.id)}>
+                        Smazat
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </main>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Newsletter subscribers                                              */
+/* ------------------------------------------------------------------ */
+
+interface SubscriberRow {
+  id: string
+  email: string
+  discount_code: string | null
+  created_at: string
+}
+
+function SubscribersView() {
+  const [subs, setSubs] = useState<SubscriberRow[]>([])
+  const [orderAgg, setOrderAgg] = useState<Record<string, { count: number; total: number }>>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    void (async () => {
+      const [s, o] = await Promise.all([
+        supabase!.from('subscribers').select('*').order('created_at', { ascending: false }),
+        supabase!.from('orders').select('email,total_czk,status'),
+      ])
+      if (s.data) setSubs(s.data as SubscriberRow[])
+      if (o.data) {
+        const agg: Record<string, { count: number; total: number }> = {}
+        for (const row of o.data as { email: string; total_czk: number; status: string }[]) {
+          if (row.status === 'cancelled') continue
+          const key = (row.email || '').toLowerCase()
+          agg[key] = agg[key] || { count: 0, total: 0 }
+          agg[key].count++
+          agg[key].total += Number(row.total_czk)
+        }
+        setOrderAgg(agg)
+      }
+      setLoading(false)
+    })()
+  }, [])
+
+  const remove = async (id: string) => {
+    if (!window.confirm('Odstranit tohoto odběratele?')) return
+    const { error } = await supabase!.from('subscribers').delete().eq('id', id)
+    if (!error) setSubs((ss) => ss.filter((x) => x.id !== id))
+  }
+
+  if (loading)
+    return (
+      <main className="admin__main">
+        <p className="admin__muted">Načítání…</p>
+      </main>
+    )
+
+  return (
+    <main className="admin__main">
+      <div className="admin__card">
+        <h2 className="admin__chart-title">💌 Odběratelé novinek ({subs.length})</h2>
+        {subs.length === 0 ? (
+          <p className="admin__muted">
+            Zatím žádní odběratelé. Návštěvníci se přihlašují přes formulář na úvodní stránce a
+            automaticky dostanou e-mail s osobním 10% kódem.
+          </p>
+        ) : (
+          <table className="admin__table">
+            <thead>
+              <tr>
+                <th>E-mail</th>
+                <th>Přihlášen</th>
+                <th>Objednávky</th>
+                <th>Utraceno</th>
+                <th>Stav</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {subs.map((s) => {
+                const a = orderAgg[s.email.toLowerCase()]
+                return (
+                  <tr key={s.id}>
+                    <td>
+                      {s.email}
+                      {s.discount_code && (
+                        <div className="admin__muted admin__small">kód: {s.discount_code}</div>
+                      )}
+                    </td>
+                    <td>{new Date(s.created_at).toLocaleDateString('cs-CZ')}</td>
+                    <td>{a?.count ?? 0}</td>
+                    <td>{a ? `${Math.round(a.total).toLocaleString('cs-CZ')} Kč` : '—'}</td>
+                    <td>
+                      <span className={`admin__promo-status admin__promo-status--${a ? 'running' : 'planned'}`}>
+                        {a ? 'Zákazník' : 'Jen newsletter'}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="admin__btn admin__btn--danger" onClick={() => void remove(s.id)}>
+                        Odstranit
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </main>
   )
 }
 
@@ -1982,6 +2633,46 @@ function ProductForm({
             Pořadí (nižší = výš)
             <input type="number" value={r.sort} onChange={(e) => set('sort', Number(e.target.value))} />
           </label>
+          <label>
+            Počet kusů skladem
+            <input
+              type="number"
+              min="0"
+              placeholder="nesledovat"
+              value={r.stock_qty == null ? '' : String(r.stock_qty)}
+              onChange={(e) =>
+                set('stock_qty', e.target.value === '' ? null : Math.max(0, Number(e.target.value)))
+              }
+            />
+          </label>
+        </div>
+
+        <div className="admin__season-row">
+          <span>Sezóny (pro sezónní akce):</span>
+          {(
+            [
+              ['spring', 'Jaro'],
+              ['summer', 'Léto'],
+              ['autumn', 'Podzim'],
+              ['winter', 'Zima'],
+            ] as [string, string][]
+          ).map(([id, label]) => (
+            <label key={id} className="admin__switch">
+              <input
+                type="checkbox"
+                checked={(r.seasons ?? []).includes(id)}
+                onChange={(e) =>
+                  set(
+                    'seasons',
+                    e.target.checked
+                      ? [...(r.seasons ?? []), id]
+                      : (r.seasons ?? []).filter((x) => x !== id),
+                  )
+                }
+              />
+              <span>{label}</span>
+            </label>
+          ))}
         </div>
 
         <div className="admin__flags">

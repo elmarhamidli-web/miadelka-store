@@ -116,6 +116,7 @@
 .admin__tabs {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 .admin__tabs button {
   padding: 9px 18px;
@@ -277,6 +278,91 @@
 }
 .admin__table tr.is-muted td {
   opacity: 0.5;
+}
+
+/* Inventory */
+.admin__delivery-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.admin__delivery-row select {
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid #eadfd9;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+}
+.admin__delivery-row input {
+  width: 90px;
+  border: 1.5px solid #eadfd9;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+.admin__delivery-actions {
+  margin: 4px 0 12px;
+}
+.admin__delivery-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: #6b5b6b;
+  margin-bottom: 12px;
+}
+.admin__delivery-note input {
+  border: 1.5px solid #eadfd9;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+.admin__stock-input {
+  width: 90px;
+  border: 1.5px solid #eadfd9;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+/* Seasons + promotion status */
+.admin__season-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 6px 0 14px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #6b5b6b;
+}
+.admin__promo-status {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.admin__promo-status--running {
+  background: #e9f8ef;
+  color: #1f5e3a;
+}
+.admin__promo-status--planned {
+  background: #fff4dd;
+  color: #8a6116;
+}
+.admin__promo-status--ended,
+.admin__promo-status--off {
+  background: #f0eaf0;
+  color: #8b7d8b;
 }
 
 /* Reviews moderation */

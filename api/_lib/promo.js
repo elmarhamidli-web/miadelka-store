@@ -110,6 +110,35 @@ export async function redeemGiftCard(code, amountCzk) {
 }
 
 /**
+ * Active seasonal promotions (admin-managed). Used to price products
+ * server-side exactly like the storefront does.
+ */
+export async function getActivePromotions() {
+  try {
+    const rows = await sb(`promotions?select=*&active=eq.true`)
+    const now = Date.now()
+    return (rows || []).filter(
+      (p) => new Date(p.starts_at).getTime() <= now && new Date(p.ends_at).getTime() > now,
+    )
+  } catch (err) {
+    console.error('getActivePromotions failed:', err)
+    return []
+  }
+}
+
+/** Effective price of a product row after seasonal promotions (CZK). */
+export function promoPrice(row, promos) {
+  const seasons = row.seasons || []
+  let pct = 0
+  for (const p of promos) {
+    const ps = p.seasons || []
+    if (ps.length === 0 || ps.some((s) => seasons.includes(s))) pct = Math.max(pct, Number(p.percent))
+  }
+  const base = Number(row.price_czk)
+  return pct > 0 ? Math.round(base * (1 - pct / 100)) : base
+}
+
+/**
  * Compute all promo amounts for an order.
  * Shipping threshold applies to the subtotal AFTER discount.
  * Gift card covers up to the remaining total (items + shipping).
