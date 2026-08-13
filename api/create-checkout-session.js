@@ -367,12 +367,23 @@ export default async function handler(req, res) {
         description: `Little One Store — objednávka #${orderNumber}`,
       },
       // Stripe issues a proper invoice/receipt PDF for every paid order.
+      // Stripe prints the trading name ("Little One Store") in the header, so
+      // the legal entity (obchodní firma, IČO, DIČ) is added as custom fields
+      // — a Czech faktura must show them.
       invoice_creation: {
         enabled: true,
         invoice_data: {
           description: `Little One Store — objednávka #${orderNumber}`,
           metadata: { order_number: String(orderNumber) },
-          footer: 'Azruk s.r.o. · IČO 14420333 · Hviezdoslavova 545/41, 627 00 Brno',
+          custom_fields: [
+            { name: 'Prodávající', value: 'Azruk s.r.o.' },
+            { name: 'IČO', value: '14420333' },
+            { name: 'DIČ', value: 'CZ14420333' },
+          ],
+          footer:
+            'Dodavatel: Azruk s.r.o., Hviezdoslavova 545/41, 627 00 Brno, Česká republika\n' +
+            'IČO: 14420333 · DIČ: CZ14420333 · Bankovní účet: 7441532004/5500\n' +
+            'info@littleonestore.cz · www.littleonestore.cz',
         },
       },
       success_url: `${origin}/checkout?success=1&order=${orderNumber}`,
