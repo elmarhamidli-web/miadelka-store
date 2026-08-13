@@ -46,6 +46,20 @@ export default async function handler(req, res) {
       const orderNumber = session.metadata?.order_number
       if (orderNumber && session.payment_status === 'paid') {
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+        // Stripe issues an invoice for the paid session — fetch its PDF /
+        // hosted links so we can send them to the customer ourselves.
+        let invoiceUrl = null
+        let invoicePdf = null
+        try {
+          if (session.invoice) {
+            const inv = await stripe.invoices.retrieve(String(session.invoice))
+            invoiceUrl = inv.hosted_invoice_url || null
+            invoicePdf = inv.invoice_pdf || null
+          }
+        } catch (err) {
+          console.error('Invoice fetch failed:', err.message)
+        }
         // `status=eq.new` + return=representation → idempotent: a webhook
         // retry matches no row and skips e-mails + code redemption.
         const resp = await fetch(
@@ -61,6 +75,8 @@ export default async function handler(req, res) {
             body: JSON.stringify({
               status: 'paid',
               payment_ref: String(session.payment_intent || session.id),
+              invoice_url: invoiceUrl,
+              invoice_pdf: invoicePdf,
             }),
           },
         )

@@ -127,6 +127,15 @@ export function customerOrderEmail(order) {
 
 /** Confirmation to the customer after a successful card payment. */
 export function customerPaidEmail(order) {
+  // Stripe invoice (PDF / hosted page) when available.
+  const invoiceLink = order.invoice_pdf || order.invoice_url
+  const invoiceBlock = invoiceLink
+    ? `<p style="text-align:center;margin:22px 0 6px;">
+         <a href="${invoiceLink}" style="display:inline-block;background:#fff;border:2px solid #ef5f8d;color:#ef5f8d;text-decoration:none;font-weight:700;padding:11px 26px;border-radius:999px;">
+           📄 Stáhnout fakturu (PDF)
+         </a>
+       </p>`
+    : ''
   return {
     to: order.email,
     subject: `Platba přijata — objednávka #${order.order_number} — Little One Store`,
@@ -145,6 +154,7 @@ export function customerPaidEmail(order) {
       <p style="color:#6b5d6b;line-height:1.6;">
         <strong>Způsob platby:</strong> kartou online ✓ zaplaceno
       </p>
+      ${invoiceBlock}
     `),
   }
 }

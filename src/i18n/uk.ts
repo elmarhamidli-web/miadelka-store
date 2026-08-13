@@ -373,9 +373,9 @@ export const uk: Dictionary = {
     },
   },
   categories: {
-    baby: { name: 'Малюки', tagline: '0–24 місяці' },
-    girls: { name: 'Дівчатка', tagline: '0–24 місяці' },
-    boys: { name: 'Хлопчики', tagline: '0–24 місяці' },
+    baby: { name: 'Малюки', tagline: '' },
+    girls: { name: 'Дівчатка', tagline: '' },
+    boys: { name: 'Хлопчики', tagline: '' },
     shoes: { name: 'Взуття', tagline: 'Перші кроки' },
     accessories: { name: 'Аксесуари', tagline: 'Фінальний штрих' },
     'new-collection': { name: 'Нова колекція', tagline: 'Свіжі новинки' },

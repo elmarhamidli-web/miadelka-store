@@ -34,7 +34,7 @@ export function Categories({ onSelect }: Props) {
               <span className="cat-card__emoji" aria-hidden="true">{c.emoji}</span>
               <div className="cat-card__text">
                 <strong>{categoryName(c.id)}</strong>
-                <span>{categoryTagline(c.id)}</span>
+                {categoryTagline(c.id) && <span>{categoryTagline(c.id)}</span>}
               </div>
               <span className="cat-card__arrow" aria-hidden="true">→</span>
             </motion.button>

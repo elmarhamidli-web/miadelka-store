@@ -372,9 +372,9 @@ export const cs: Dictionary = {
     },
   },
   categories: {
-    baby: { name: 'Miminka', tagline: '0–24 měsíců' },
-    girls: { name: 'Holky', tagline: '0–24 měsíců' },
-    boys: { name: 'Kluci', tagline: '0–24 měsíců' },
+    baby: { name: 'Miminka', tagline: '' },
+    girls: { name: 'Holky', tagline: '' },
+    boys: { name: 'Kluci', tagline: '' },
     shoes: { name: 'Boty', tagline: 'První krůčky' },
     accessories: { name: 'Doplňky', tagline: 'Dotek na závěr' },
     'new-collection': { name: 'Nová kolekce', tagline: 'Čerstvé novinky' },

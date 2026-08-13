@@ -13,6 +13,8 @@ import './admin.css'
 
 const CATEGORIES: { id: CategoryId; label: string }[] = [
   { id: 'baby', label: 'Miminka' },
+  { id: 'girls', label: 'Holky' },
+  { id: 'boys', label: 'Kluci' },
   { id: 'new-collection', label: 'Nová kolekce' },
 ]
 
@@ -465,6 +467,8 @@ interface OrderRow {
   shipping_name?: string | null
   pickup_point_id?: string | null
   pickup_point_name?: string | null
+  invoice_url?: string | null
+  invoice_pdf?: string | null
 }
 
 const ORDER_STATUSES: Record<string, string> = {
@@ -661,6 +665,18 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                     Mezisoučet: {o.subtotal_czk} Kč · Doprava: {o.shipping_czk} Kč ·{' '}
                     <strong>Celkem: {o.total_czk} Kč</strong>
                   </p>
+                  {(o.invoice_pdf || o.invoice_url) && (
+                    <p>
+                      <a
+                        className="admin__btn"
+                        href={o.invoice_pdf || o.invoice_url || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        📄 Faktura (PDF)
+                      </a>
+                    </p>
+                  )}
                   {o.tracking_number && (
                     <div className="admin__tracking-info">
                       <h4>Doprava</h4>

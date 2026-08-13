@@ -357,9 +357,9 @@ export const en: Dictionary = {
     colors: {},
   },
   categories: {
-    baby: { name: 'Baby', tagline: '0 – 24 months' },
-    girls: { name: 'Girls', tagline: '0 – 24 months' },
-    boys: { name: 'Boys', tagline: '0 – 24 months' },
+    baby: { name: 'Baby', tagline: '' },
+    girls: { name: 'Girls', tagline: '' },
+    boys: { name: 'Boys', tagline: '' },
     shoes: { name: 'Shoes', tagline: 'Tiny steps' },
     accessories: { name: 'Accessories', tagline: 'Finishing touches' },
     'new-collection': { name: 'New Collection', tagline: 'Fresh arrivals' },
