@@ -60,10 +60,11 @@ export default async function handler(req, res) {
         } catch (err) {
           console.error('Invoice fetch failed:', err.message)
         }
-        // `status=eq.new` + return=representation → idempotent: a webhook
-        // retry matches no row and skips e-mails + code redemption.
+        // Only unpaid orders (pending card / new COD) transition to paid, and
+        // return=representation makes it idempotent: a webhook retry matches
+        // no row and skips e-mails + code redemption.
         const resp = await fetch(
-          `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&status=eq.new`,
+          `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&status=in.(new,pending)`,
           {
             method: 'PATCH',
             headers: {
@@ -113,7 +114,7 @@ export default async function handler(req, res) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
       if (orderNumber && serviceKey) {
         await fetch(
-          `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&status=eq.new`,
+          `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&status=in.(new,pending)`,
           {
             method: 'PATCH',
             headers: {

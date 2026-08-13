@@ -261,6 +261,10 @@ export default async function handler(req, res) {
       shipping_czk: shippingCzk,
       total_czk: totalCzk,
       payment_method: paidByGift ? 'gift_card' : 'card',
+      // Card orders start as "pending" — they only become real orders once
+      // Stripe confirms the payment. Abandoned checkouts stay pending and are
+      // expired by Stripe (→ cancelled), so they never pollute the order list.
+      status: paidByGift ? 'new' : 'pending',
       discount_code: promo.discount?.code || null,
       discount_czk: promo.discountCzk,
       gift_card_code: giftCzk > 0 ? promo.gift?.code || null : null,

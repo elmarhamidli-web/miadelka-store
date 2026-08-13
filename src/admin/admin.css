@@ -280,6 +280,11 @@
   opacity: 0.5;
 }
 
+.admin__status--pending {
+  background: #fff4dd;
+  color: #8a6116;
+}
+
 /* Inventory */
 .admin__delivery-row {
   display: flex;

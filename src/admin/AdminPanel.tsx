@@ -472,6 +472,7 @@ interface OrderRow {
 }
 
 const ORDER_STATUSES: Record<string, string> = {
+  pending: 'Nedokončená (nezaplaceno)',
   new: 'Nová',
   paid: 'Zaplacená',
   shipped: 'Odesláno',
@@ -479,10 +480,21 @@ const ORDER_STATUSES: Record<string, string> = {
   cancelled: 'Zrušená',
 }
 
+/** Real orders the shop owner must act on. */
+const ACTIVE_STATUSES = ['new', 'paid', 'shipped', 'done']
+
+const ORDER_FILTERS: { key: 'active' | 'pending' | 'cancelled' | 'all'; label: string }[] = [
+  { key: 'active', label: 'Objednávky' },
+  { key: 'pending', label: 'Nedokončené' },
+  { key: 'cancelled', label: 'Zrušené' },
+  { key: 'all', label: 'Vše' },
+]
+
 function OrdersView({ notify }: { notify: (m: string) => void }) {
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [openId, setOpenId] = useState<string | null>(null)
   const [fulfillId, setFulfillId] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'active' | 'pending' | 'cancelled' | 'all'>('active')
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -567,17 +579,52 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
 
   if (loading) return <main className="admin__main"><p className="admin__muted">Načítání…</p></main>
 
+  const counts = {
+    active: orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length,
+    pending: orders.filter((o) => o.status === 'pending').length,
+    cancelled: orders.filter((o) => o.status === 'cancelled').length,
+    all: orders.length,
+  }
+  const shown = orders.filter((o) =>
+    filter === 'all'
+      ? true
+      : filter === 'active'
+        ? ACTIVE_STATUSES.includes(o.status)
+        : o.status === filter,
+  )
+
   return (
     <main className="admin__main">
-      {orders.length === 0 && (
+      <div className="admin__range">
+        {ORDER_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            className={`admin__range-pill ${filter === f.key ? 'is-active' : ''}`}
+            onClick={() => setFilter(f.key)}
+          >
+            {f.label} ({counts[f.key]})
+          </button>
+        ))}
+      </div>
+
+      {filter === 'pending' && (
+        <p className="admin__muted admin__small" style={{ marginBottom: 12 }}>
+          Zákazník začal platbu kartou, ale nedokončil ji — objednávka není zaplacená a nic
+          neposílejte. Stripe takové pokusy sám po čase zruší a zboží se vrátí na sklad.
+        </p>
+      )}
+
+      {shown.length === 0 && (
         <div className="admin__card admin__card--narrow">
           <p className="admin__muted">
-            Zatím žádné objednávky. Jakmile zákazník dokončí pokladnu, objeví se tady.
+            {filter === 'active'
+              ? 'Zatím žádné objednávky. Jakmile zákazník dokončí pokladnu, objeví se tady.'
+              : 'V této kategorii nic není.'}
           </p>
         </div>
       )}
       <div className="admin__list">
-        {orders.map((o) => (
+        {shown.map((o) => (
           <div className="admin__row admin__order" key={o.id}>
             <div className="admin__row-main" onClick={() => setOpenId(openId === o.id ? null : o.id)}>
               <strong>
@@ -599,12 +646,14 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
-              <button
-                className={`admin__btn ${o.status === 'shipped' || o.status === 'done' ? '' : 'admin__btn--primary'}`}
-                onClick={() => setFulfillId(o.id)}
-              >
-                {o.status === 'shipped' || o.status === 'done' ? '📦 Upravit odeslání' : '📦 Odeslat objednávku'}
-              </button>
+              {o.status !== 'pending' && (
+                <button
+                  className={`admin__btn ${o.status === 'shipped' || o.status === 'done' ? '' : 'admin__btn--primary'}`}
+                  onClick={() => setFulfillId(o.id)}
+                >
+                  {o.status === 'shipped' || o.status === 'done' ? '📦 Upravit odeslání' : '📦 Odeslat objednávku'}
+                </button>
+              )}
               {(o.invoice_pdf || o.invoice_url) && (
                 <a
                   className="admin__btn"
@@ -1797,7 +1846,7 @@ function SubscribersView() {
       if (o.data) {
         const agg: Record<string, { count: number; total: number }> = {}
         for (const row of o.data as { email: string; total_czk: number; status: string }[]) {
-          if (row.status === 'cancelled') continue
+          if (row.status === 'cancelled' || row.status === 'pending') continue
           const key = (row.email || '').toLowerCase()
           agg[key] = agg[key] || { count: 0, total: 0 }
           agg[key].count++
@@ -2579,8 +2628,10 @@ function StatsView({ products }: { products: ProductRow[] }) {
     }
     const cur = events.filter((e) => inWin(e.created_at, win.from, win.to))
     const prev = events.filter((e) => inWin(e.created_at, win.prevFrom, win.prevTo))
-    const curOrd = orders.filter((o) => o.status !== 'cancelled' && inWin(o.created_at, win.from, win.to))
-    const prevOrd = orders.filter((o) => o.status !== 'cancelled' && inWin(o.created_at, win.prevFrom, win.prevTo))
+    // Abandoned (pending) and cancelled checkouts are not revenue.
+    const counts_ = (o: OrdStatRow) => o.status !== 'cancelled' && o.status !== 'pending'
+    const curOrd = orders.filter((o) => counts_(o) && inWin(o.created_at, win.from, win.to))
+    const prevOrd = orders.filter((o) => counts_(o) && inWin(o.created_at, win.prevFrom, win.prevTo))
 
     const agg = (evs: EvRow[], ords: OrdStatRow[]) => ({
       sessions: new Set(evs.map((e) => e.session_id)).size,
