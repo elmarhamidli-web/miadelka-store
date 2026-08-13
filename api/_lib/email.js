@@ -181,6 +181,15 @@ export function ownerOrderEmail(order, paid) {
           Otevřít administraci
         </a>
       </p>
+      ${
+        order.invoice_pdf || order.invoice_url
+          ? `<p style="text-align:center;margin:10px 0 0;">
+               <a href="${order.invoice_pdf || order.invoice_url}" style="display:inline-block;background:#fff;border:2px solid #ef5f8d;color:#ef5f8d;text-decoration:none;font-weight:700;padding:11px 26px;border-radius:999px;">
+                 📄 Faktura (PDF)
+               </a>
+             </p>`
+          : ''
+      }
     `),
   }
 }

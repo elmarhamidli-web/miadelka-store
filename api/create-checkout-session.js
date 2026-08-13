@@ -130,6 +130,33 @@ async function getOrCreateStripeProduct(row) {
   return productId
 }
 
+/**
+ * Reuse (or create) the Stripe customer for this e-mail with Czech as the
+ * preferred locale — Stripe renders invoice PDFs and the hosted invoice page
+ * in the customer's language, so this keeps every faktura in Czech
+ * regardless of the shopper's browser language.
+ */
+async function getOrCreateCustomer(email, name) {
+  try {
+    const found = await stripe.customers.list({ email, limit: 1 })
+    if (found.data[0]) {
+      await stripe.customers.update(found.data[0].id, {
+        name: name || undefined,
+        preferred_locales: ['cs'],
+      })
+      return found.data[0].id
+    }
+  } catch (err) {
+    console.error('Customer lookup failed:', err.message)
+  }
+  const created = await stripe.customers.create({
+    email,
+    name: name || undefined,
+    preferred_locales: ['cs'],
+  })
+  return created.id
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
@@ -312,11 +339,12 @@ export default async function handler(req, res) {
 
     // 6. Create the Checkout Session.
     const origin = req.headers.origin || SITE
+    const stripeCustomerId = await getOrCreateCustomer(customer.email, customer.name)
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
       discounts,
-      customer_email: customer.email,
+      customer: stripeCustomerId,
       locale: locale === 'cs' ? 'cs' : 'auto',
       shipping_options: [
         {

@@ -605,6 +605,17 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
               >
                 {o.status === 'shipped' || o.status === 'done' ? '📦 Upravit odeslání' : '📦 Odeslat objednávku'}
               </button>
+              {(o.invoice_pdf || o.invoice_url) && (
+                <a
+                  className="admin__btn"
+                  href={o.invoice_pdf || o.invoice_url || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Stáhnout fakturu v PDF"
+                >
+                  📄 Faktura
+                </a>
+              )}
               <button className="admin__btn" onClick={() => setOpenId(openId === o.id ? null : o.id)}>
                 {openId === o.id ? 'Skrýt' : 'Detail'}
               </button>
