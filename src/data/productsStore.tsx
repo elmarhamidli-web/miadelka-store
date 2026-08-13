@@ -51,6 +51,8 @@ export interface ProductRow {
 export interface SiteSettings {
   shipping_czk: number
   free_over_czk: number
+  /** Packeta/Zásilkovna widget API key (optional, set in admin settings). */
+  packeta_api_key?: string
 }
 
 export interface Promotion {
@@ -211,6 +213,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
         setSettings({
           shipping_czk: Number(s.shipping_czk ?? DEFAULT_SETTINGS.shipping_czk),
           free_over_czk: Number(s.free_over_czk ?? DEFAULT_SETTINGS.free_over_czk),
+          packeta_api_key: (s as { packeta_api_key?: string }).packeta_api_key || undefined,
         })
       }
     }

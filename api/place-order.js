@@ -5,6 +5,7 @@ import { sendOrderEmails } from './_lib/email.js'
 import {
   applyPromo,
   getActivePromotions,
+  getShippingMethod,
   promoPrice,
   redeemDiscount,
   redeemGiftCard,
@@ -31,7 +32,15 @@ export default async function handler(req, res) {
     return
   }
   try {
-    const { customer, items, discountCode, giftCode } = req.body || {}
+    const {
+      customer,
+      items,
+      discountCode,
+      giftCode,
+      shippingMethod,
+      pickupPointId,
+      pickupPointName,
+    } = req.body || {}
     if (
       !customer?.name ||
       !customer?.email ||
@@ -86,8 +95,13 @@ export default async function handler(req, res) {
     const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
 
-    // Discounts + gift card — always validated against the DB, never the client.
-    const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode })
+    // Shipping method + discounts — always validated against the DB.
+    const method = await getShippingMethod(shippingMethod)
+    if (method && method.kind === 'pickup' && !String(pickupPointName || '').trim()) {
+      res.status(400).json({ error: 'Pickup point required' })
+      return
+    }
+    const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode, method })
     const paidByGift = promo.totalCzk === 0
 
     const orderPayload = {
@@ -107,6 +121,10 @@ export default async function handler(req, res) {
       discount_czk: promo.discountCzk,
       gift_card_code: promo.gift?.code || null,
       gift_card_czk: promo.giftCzk,
+      shipping_method: method?.code || null,
+      shipping_name: method?.name_cs || null,
+      pickup_point_id: String(pickupPointId || '').slice(0, 60) || null,
+      pickup_point_name: String(pickupPointName || '').slice(0, 200) || null,
     }
 
     const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/place_order`, {

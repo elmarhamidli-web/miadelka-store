@@ -139,11 +139,29 @@ export function promoPrice(row, promos) {
 }
 
 /**
+ * Look up an active shipping method by code (admin-managed).
+ * Returns null when the code is unknown or the method is disabled.
+ */
+export async function getShippingMethod(code) {
+  if (!code) return null
+  try {
+    const rows = await sb(
+      `shipping_methods?code=eq.${encodeURIComponent(String(code))}&active=eq.true&select=*`,
+    )
+    return rows?.[0] ?? null
+  } catch (err) {
+    console.error('getShippingMethod failed:', err)
+    return null
+  }
+}
+
+/**
  * Compute all promo amounts for an order.
  * Shipping threshold applies to the subtotal AFTER discount.
  * Gift card covers up to the remaining total (items + shipping).
+ * `method` (optional) overrides the global shipping settings.
  */
-export async function applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode }) {
+export async function applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode, method }) {
   let discountCzk = 0
   let discount = null
   if (discountCode) {
@@ -154,8 +172,13 @@ export async function applyPromo({ subtotalCzk, shippingCfg, discountCode, giftC
     }
   }
   const afterDiscount = subtotalCzk - discountCzk
-  const shippingCzk =
-    afterDiscount >= Number(shippingCfg.free_over_czk) ? 0 : Number(shippingCfg.shipping_czk)
+  const shippingCzk = method
+    ? method.free_over_czk != null && afterDiscount >= Number(method.free_over_czk)
+      ? 0
+      : Number(method.price_czk)
+    : afterDiscount >= Number(shippingCfg.free_over_czk)
+      ? 0
+      : Number(shippingCfg.shipping_czk)
 
   let giftCzk = 0
   let gift = null

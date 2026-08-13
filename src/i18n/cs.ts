@@ -227,6 +227,14 @@ export const cs: Dictionary = {
       promoMin: 'Kód platí až od vyšší hodnoty objednávky.',
       promoEmpty: 'Na poukazu už nezbývá žádný kredit.',
       promoAlready: 'Kód tohoto typu už máte použitý.',
+      shippingTitle: 'Způsob dopravy',
+      pickPoint: '📍 Vybrat výdejní místo',
+      changePoint: 'Změnit místo',
+      pointChosen: 'Vybrané výdejní místo',
+      pointRequired: 'Vyberte prosím výdejní místo.',
+      pointManual: 'Název výdejního místa',
+      openMap: 'Otevřít mapu výdejních míst ↗',
+      free: 'Zdarma',
     },
     footer: {
       tagline:

@@ -63,14 +63,19 @@ function itemsTable(order) {
         <td align="right" style="padding:10px 0;color:#1f9d63;">−${czk(order.gift_card_czk)}</td>
       </tr>`
       : ''
+  const shipLabel = order.shipping_name ? `Doprava — ${order.shipping_name}` : 'Doprava'
+  const pickupRow = order.pickup_point_name
+    ? `<tr><td colspan="2" style="padding:2px 0 10px;color:#6b5d6b;font-size:13px;">📍 Výdejní místo: <strong>${order.pickup_point_name}</strong></td></tr>`
+    : ''
   return `
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;">
       ${rows}
       ${discountRow}
       <tr>
-        <td style="padding:10px 0;color:#8b7d8b;">Doprava</td>
+        <td style="padding:10px 0;color:#8b7d8b;">${shipLabel}</td>
         <td align="right" style="padding:10px 0;color:#8b7d8b;">${order.shipping_czk > 0 ? czk(order.shipping_czk) : 'Zdarma'}</td>
       </tr>
+      ${pickupRow}
       ${giftRow}
       <tr>
         <td style="padding:10px 0;font-size:17px;"><strong>Celkem</strong></td>

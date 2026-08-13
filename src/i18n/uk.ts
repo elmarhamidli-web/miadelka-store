@@ -227,6 +227,14 @@ export const uk: Dictionary = {
       promoMin: 'Код діє від більшої суми замовлення.',
       promoEmpty: 'На картці не залишилося кредиту.',
       promoAlready: 'Код цього типу вже застосовано.',
+      shippingTitle: 'Спосіб доставки',
+      pickPoint: '📍 Вибрати пункт видачі',
+      changePoint: 'Змінити пункт',
+      pointChosen: 'Вибраний пункт видачі',
+      pointRequired: 'Виберіть, будь ласка, пункт видачі.',
+      pointManual: 'Назва пункту видачі',
+      openMap: 'Відкрити карту пунктів видачі ↗',
+      free: 'Безкоштовно',
     },
     footer: {
       tagline:

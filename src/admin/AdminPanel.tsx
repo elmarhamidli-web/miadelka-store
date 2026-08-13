@@ -13,8 +13,7 @@ import './admin.css'
 
 const CATEGORIES: { id: CategoryId; label: string }[] = [
   { id: 'baby', label: 'Miminka' },
-  { id: 'girls', label: 'Holky' },
-  { id: 'boys', label: 'Kluci' },
+  { id: 'new-collection', label: 'Nová kolekce' },
 ]
 
 const GRADIENTS: Record<string, string> = {
@@ -168,7 +167,16 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const [editing, setEditing] = useState<ProductRow | null>(null)
   const [isNew, setIsNew] = useState(false)
   const [view, setView] = useState<
-    'products' | 'orders' | 'inventory' | 'promos' | 'sales' | 'reviews' | 'subscribers' | 'stats' | 'settings'
+    | 'products'
+    | 'orders'
+    | 'inventory'
+    | 'shipping'
+    | 'promos'
+    | 'sales'
+    | 'reviews'
+    | 'subscribers'
+    | 'stats'
+    | 'settings'
   >('products')
   const [toast, setToast] = useState('')
   const [filter, setFilter] = useState('')
@@ -247,6 +255,12 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
             Sklad
           </button>
           <button
+            className={view === 'shipping' ? 'is-active' : ''}
+            onClick={() => setView('shipping')}
+          >
+            Doprava
+          </button>
+          <button
             className={view === 'sales' ? 'is-active' : ''}
             onClick={() => setView('sales')}
           >
@@ -300,6 +314,8 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
           onStockChange={(id, qty) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, stock_qty: qty } : r)))}
           onSeasonsChange={(id, seasons) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, seasons } : r)))}
         />
+      ) : view === 'shipping' ? (
+        <ShippingView notify={notify} />
       ) : view === 'sales' ? (
         <SalesView notify={notify} products={rows} />
       ) : view === 'promos' ? (
@@ -445,6 +461,10 @@ interface OrderRow {
   tracking_url?: string | null
   fulfilled_at?: string | null
   fulfilled_items?: number[] | null
+  shipping_method?: string | null
+  shipping_name?: string | null
+  pickup_point_id?: string | null
+  pickup_point_name?: string | null
 }
 
 const ORDER_STATUSES: Record<string, string> = {
@@ -606,6 +626,21 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                     <br />
                     {o.zip} {o.city}
                   </p>
+                  {(o.shipping_name || o.pickup_point_name) && (
+                    <>
+                      <h4>Zvolená doprava</h4>
+                      <p>
+                        🚚 {o.shipping_name ?? o.shipping_method}
+                        {o.pickup_point_name && (
+                          <>
+                            <br />
+                            📍 <strong>{o.pickup_point_name}</strong>
+                            {o.pickup_point_id ? ` (${o.pickup_point_id})` : ''}
+                          </>
+                        )}
+                      </p>
+                    </>
+                  )}
                   {o.note && (
                     <>
                       <h4>Poznámka</h4>
@@ -831,6 +866,310 @@ function FulfillModal({
         </form>
       </div>
     </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Shipping methods (Doprava)                                          */
+/* ------------------------------------------------------------------ */
+
+interface ShippingRow {
+  id: string
+  code: string
+  name_cs: string
+  name_en: string | null
+  name_uk: string | null
+  note_cs: string | null
+  price_czk: number
+  free_over_czk: number | null
+  kind: 'address' | 'pickup'
+  carrier: string | null
+  cod_allowed: boolean
+  active: boolean
+  sort: number
+}
+
+const CARRIER_LABELS: Record<string, string> = {
+  zasilkovna: 'Zásilkovna / Packeta',
+  ppl: 'PPL',
+  balikovna: 'Balíkovna / Česká pošta',
+  dpd: 'DPD',
+  gls: 'GLS',
+  other: 'Jiný',
+}
+
+function ShippingView({ notify }: { notify: (m: string) => void }) {
+  const [rows, setRows] = useState<ShippingRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [edited, setEdited] = useState<Record<string, Partial<ShippingRow>>>({})
+  const [packetaKey, setPacketaKey] = useState('')
+  const [savingKey, setSavingKey] = useState(false)
+
+  // New method form
+  const [nName, setNName] = useState('')
+  const [nPrice, setNPrice] = useState('90')
+  const [nFree, setNFree] = useState('2000')
+  const [nKind, setNKind] = useState<'address' | 'pickup'>('address')
+  const [nCarrier, setNCarrier] = useState('zasilkovna')
+
+  const load = useCallback(async () => {
+    const [m, s] = await Promise.all([
+      supabase!.from('shipping_methods').select('*').order('sort', { ascending: true }),
+      supabase!.from('site_settings').select('value').eq('key', 'shipping').maybeSingle(),
+    ])
+    if (m.data) setRows(m.data as ShippingRow[])
+    const cfg = (s.data?.value ?? {}) as { packeta_api_key?: string }
+    setPacketaKey(cfg.packeta_api_key ?? '')
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const patch = (id: string, changes: Partial<ShippingRow>) =>
+    setEdited((e) => ({ ...e, [id]: { ...e[id], ...changes } }))
+
+  const save = async (row: ShippingRow) => {
+    const changes = edited[row.id]
+    if (!changes) return
+    const { error } = await supabase!.from('shipping_methods').update(changes).eq('id', row.id)
+    if (error) {
+      notify('Chyba: ' + error.message)
+      return
+    }
+    setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, ...changes } : r)))
+    setEdited((e) => {
+      const c = { ...e }
+      delete c[row.id]
+      return c
+    })
+    notify('Doprava uložena ✓')
+  }
+
+  const toggle = async (row: ShippingRow) => {
+    const { error } = await supabase!
+      .from('shipping_methods')
+      .update({ active: !row.active })
+      .eq('id', row.id)
+    if (error) notify('Chyba: ' + error.message)
+    else setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, active: !row.active } : r)))
+  }
+
+  const remove = async (id: string) => {
+    if (!window.confirm('Opravdu smazat tento způsob dopravy?')) return
+    const { error } = await supabase!.from('shipping_methods').delete().eq('id', id)
+    if (error) notify('Chyba: ' + error.message)
+    else setRows((rs) => rs.filter((r) => r.id !== id))
+  }
+
+  const create = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!nName.trim()) {
+      notify('Zadejte název dopravy.')
+      return
+    }
+    const code = `${nCarrier}-${nKind}-${Date.now().toString(36).slice(-4)}`
+    const { data, error } = await supabase!
+      .from('shipping_methods')
+      .insert({
+        code,
+        name_cs: nName.trim(),
+        price_czk: Number(nPrice) || 0,
+        free_over_czk: nFree.trim() === '' ? null : Number(nFree),
+        kind: nKind,
+        carrier: nCarrier,
+        sort: (rows[rows.length - 1]?.sort ?? 0) + 10,
+      })
+      .select()
+      .single()
+    if (error) {
+      notify('Chyba: ' + error.message)
+      return
+    }
+    setRows((rs) => [...rs, data as ShippingRow])
+    setNName('')
+    notify('Doprava přidána ✓')
+  }
+
+  const savePacketaKey = async () => {
+    setSavingKey(true)
+    const { data } = await supabase!
+      .from('site_settings')
+      .select('value')
+      .eq('key', 'shipping')
+      .maybeSingle()
+    const cur = (data?.value ?? {}) as Record<string, unknown>
+    const { error } = await supabase!
+      .from('site_settings')
+      .upsert({ key: 'shipping', value: { ...cur, packeta_api_key: packetaKey.trim() || null } })
+    setSavingKey(false)
+    notify(error ? 'Chyba: ' + error.message : 'Klíč uložen ✓')
+  }
+
+  if (loading)
+    return (
+      <main className="admin__main">
+        <p className="admin__muted">Načítání…</p>
+      </main>
+    )
+
+  return (
+    <main className="admin__main">
+      <div className="admin__card">
+        <h2 className="admin__chart-title">🚚 Způsoby dopravy</h2>
+        <p className="admin__muted admin__small">
+          Zákazník si v pokladně vybere jeden ze zapnutých způsobů. „Výdejní místo" znamená, že si
+          zákazník musí vybrat konkrétní pobočku (u Zásilkovny přes mapu). Prázdné pole „Zdarma od"
+          = doprava nikdy není zdarma.
+        </p>
+
+        <table className="admin__table">
+          <thead>
+            <tr>
+              <th>Název</th>
+              <th>Cena (Kč)</th>
+              <th>Zdarma od (Kč)</th>
+              <th>Typ</th>
+              <th>Dobírka</th>
+              <th>Stav</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const e = edited[r.id] ?? {}
+              const val = <K extends keyof ShippingRow>(k: K): ShippingRow[K] =>
+                (e[k] !== undefined ? e[k] : r[k]) as ShippingRow[K]
+              return (
+                <tr key={r.id} className={r.active ? '' : 'is-muted'}>
+                  <td>
+                    <input
+                      className="admin__ship-name"
+                      value={String(val('name_cs'))}
+                      onChange={(ev) => patch(r.id, { name_cs: ev.target.value })}
+                    />
+                    <div className="admin__muted admin__small">
+                      {CARRIER_LABELS[r.carrier ?? 'other'] ?? r.carrier}
+                    </div>
+                  </td>
+                  <td>
+                    <input
+                      className="admin__stock-input"
+                      type="number"
+                      min="0"
+                      value={String(val('price_czk'))}
+                      onChange={(ev) => patch(r.id, { price_czk: Number(ev.target.value) })}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      className="admin__stock-input"
+                      type="number"
+                      min="0"
+                      placeholder="nikdy"
+                      value={val('free_over_czk') == null ? '' : String(val('free_over_czk'))}
+                      onChange={(ev) =>
+                        patch(r.id, {
+                          free_over_czk: ev.target.value === '' ? null : Number(ev.target.value),
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="admin__small">
+                    {r.kind === 'pickup' ? '📍 Výdejní místo' : '🏠 Na adresu'}
+                  </td>
+                  <td>
+                    <label className="admin__switch">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(val('cod_allowed'))}
+                        onChange={(ev) => patch(r.id, { cod_allowed: ev.target.checked })}
+                      />
+                      <span>{val('cod_allowed') ? 'Ano' : 'Ne'}</span>
+                    </label>
+                  </td>
+                  <td>
+                    <label className="admin__switch">
+                      <input type="checkbox" checked={r.active} onChange={() => void toggle(r)} />
+                      <span>{r.active ? 'Zapnuto' : 'Vypnuto'}</span>
+                    </label>
+                  </td>
+                  <td>
+                    {edited[r.id] && (
+                      <button className="admin__btn admin__btn--primary" onClick={() => void save(r)}>
+                        Uložit
+                      </button>
+                    )}{' '}
+                    <button className="admin__btn admin__btn--danger" onClick={() => void remove(r.id)}>
+                      Smazat
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+
+        <h3 style={{ marginTop: 24 }}>+ Přidat způsob dopravy</h3>
+        <form className="admin__promo-form" onSubmit={create}>
+          <div className="admin__promo-grid">
+            <label>
+              Název (česky)
+              <input value={nName} onChange={(e) => setNName(e.target.value)} placeholder="DPD — na adresu" />
+            </label>
+            <label>
+              Přepravce
+              <select value={nCarrier} onChange={(e) => setNCarrier(e.target.value)}>
+                {Object.entries(CARRIER_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Typ
+              <select value={nKind} onChange={(e) => setNKind(e.target.value as 'address' | 'pickup')}>
+                <option value="address">Na adresu</option>
+                <option value="pickup">Výdejní místo</option>
+              </select>
+            </label>
+            <label>
+              Cena (Kč)
+              <input type="number" min="0" value={nPrice} onChange={(e) => setNPrice(e.target.value)} />
+            </label>
+            <label>
+              Zdarma od (Kč)
+              <input type="number" min="0" value={nFree} onChange={(e) => setNFree(e.target.value)} placeholder="nikdy" />
+            </label>
+          </div>
+          <button className="admin__btn admin__btn--primary">+ Přidat</button>
+        </form>
+      </div>
+
+      <div className="admin__card" style={{ marginTop: 18 }}>
+        <h2 className="admin__chart-title">📍 Widget Zásilkovny (výběr výdejního místa)</h2>
+        <p className="admin__muted admin__small">
+          Aby si zákazník mohl vybrat výdejní místo přímo na mapě, vložte sem API klíč z účtu
+          Zásilkovna (client.packeta.com → Nastavení → API). Bez klíče se zákazníkovi otevře
+          veřejná mapa a název pobočky vypíše ručně — objednávka funguje v obou případech.
+        </p>
+        <div className="admin__promo-grid">
+          <label>
+            Packeta API klíč
+            <input
+              value={packetaKey}
+              onChange={(e) => setPacketaKey(e.target.value)}
+              placeholder="např. a1b2c3d4e5f6..."
+            />
+          </label>
+        </div>
+        <button className="admin__btn admin__btn--primary" disabled={savingKey} onClick={() => void savePacketaKey()}>
+          {savingKey ? 'Ukládám…' : 'Uložit klíč'}
+        </button>
+      </div>
+    </main>
   )
 }
 

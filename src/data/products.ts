@@ -25,7 +25,7 @@ export const products: Product[] = [
   {
     id: 'girls-summer-set',
     name: 'Girls Summer Set – Tee & Shorts',
-    category: 'girls',
+    category: 'baby',
     price: czk(349),
     rating: 4.9,
     reviews: 41,
@@ -49,7 +49,7 @@ export const products: Product[] = [
   {
     id: 'girls-flower-set',
     name: 'Girls Set – Sweatshirt & Pants',
-    category: 'girls',
+    category: 'baby',
     price: czk(329),
     rating: 4.8,
     reviews: 32,
@@ -105,7 +105,7 @@ export const products: Product[] = [
   {
     id: 'bear-3piece-set',
     name: 'Boys Bear 3-Piece Set',
-    category: 'boys',
+    category: 'baby',
     price: czk(399),
     rating: 4.9,
     reviews: 48,
@@ -127,7 +127,7 @@ export const products: Product[] = [
   {
     id: 'boys-vest-3piece',
     name: 'Boys 3-Piece Set with Vest',
-    category: 'boys',
+    category: 'baby',
     price: czk(399),
     rating: 4.8,
     reviews: 37,
@@ -146,7 +146,7 @@ export const products: Product[] = [
   {
     id: 'boys-hoodie-3piece',
     name: 'Boys 3-Piece Hoodie Set',
-    category: 'boys',
+    category: 'baby',
     price: czk(399),
     rating: 4.8,
     reviews: 44,
@@ -166,7 +166,7 @@ export const products: Product[] = [
   {
     id: 'elephant-2piece-set',
     name: 'Boys Elephant 2-Piece Set',
-    category: 'boys',
+    category: 'baby',
     price: czk(289),
     rating: 4.7,
     reviews: 29,
@@ -185,7 +185,7 @@ export const products: Product[] = [
   {
     id: 'girls-love-3piece',
     name: 'Girls Love 3-Piece Set',
-    category: 'girls',
+    category: 'baby',
     price: czk(319),
     rating: 4.9,
     reviews: 52,
@@ -206,7 +206,7 @@ export const products: Product[] = [
   {
     id: 'girls-vest-3piece',
     name: 'Girls 3-Piece Set with Vest',
-    category: 'girls',
+    category: 'baby',
     price: czk(399),
     rating: 4.8,
     reviews: 35,
@@ -222,7 +222,7 @@ export const products: Product[] = [
   {
     id: 'boys-shirt-set',
     name: 'Boys Summer Shirt Set',
-    category: 'boys',
+    category: 'baby',
     price: czk(359),
     rating: 4.8,
     reviews: 26,
@@ -245,7 +245,7 @@ export const products: Product[] = [
   {
     id: 'boys-summer-set',
     name: 'Boys Summer Tee Set',
-    category: 'boys',
+    category: 'baby',
     price: czk(349),
     rating: 4.7,
     reviews: 22,
@@ -267,7 +267,7 @@ export const products: Product[] = [
   {
     id: 'tropical-summer-set',
     name: 'Tropical Summer Set',
-    category: 'boys',
+    category: 'baby',
     price: czk(349),
     rating: 4.8,
     reviews: 19,
@@ -289,7 +289,7 @@ export const products: Product[] = [
   {
     id: 'boys-cotton-set',
     name: 'Boys Tee & Pants Set',
-    category: 'boys',
+    category: 'baby',
     price: czk(329),
     rating: 4.7,
     reviews: 17,
@@ -306,7 +306,7 @@ export const products: Product[] = [
   {
     id: 'girls-c-3piece',
     name: 'Girls Letter-C 3-Piece Set',
-    category: 'girls',
+    category: 'baby',
     price: czk(349),
     rating: 4.8,
     reviews: 24,
@@ -325,7 +325,7 @@ export const products: Product[] = [
   {
     id: 'girls-floral-3piece',
     name: 'Girls Floral 3-Piece Set',
-    category: 'girls',
+    category: 'baby',
     price: czk(349),
     rating: 4.9,
     reviews: 21,
@@ -434,7 +434,7 @@ export const products: Product[] = [
   {
     id: 'hearts-skirt-set',
     name: 'Hearts Skirt 3-Piece Set',
-    category: 'girls',
+    category: 'baby',
     price: czk(389),
     rating: 4.9,
     reviews: 23,
@@ -453,7 +453,7 @@ export const products: Product[] = [
   {
     id: 'hearts-3piece-set',
     name: 'Hearts 3-Piece Set',
-    category: 'girls',
+    category: 'baby',
     price: czk(329),
     rating: 4.8,
     reviews: 15,

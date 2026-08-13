@@ -7,6 +7,14 @@ import { useProducts } from '../data/productsStore'
 import { supabase } from '../lib/supabase'
 import { track } from '../lib/analytics'
 import { fadeUp } from '../lib/motion'
+import {
+  CARRIER_MAP_URLS,
+  fetchShippingMethods,
+  methodName,
+  pickPacketaPoint,
+  shippingPriceCzk,
+  type ShippingMethod,
+} from '../lib/shipping'
 import { ArrowIcon } from './icons'
 
 const CZK = 24
@@ -34,6 +42,12 @@ export function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
   const [paidReturn, setPaidReturn] = useState(false)
 
+  // Delivery methods (managed in the admin panel).
+  const [methods, setMethods] = useState<ShippingMethod[]>([])
+  const [methodCode, setMethodCode] = useState('')
+  const [point, setPoint] = useState<{ id: string; name: string } | null>(null)
+  const [pointError, setPointError] = useState('')
+
   // Discount code + gift card (amounts in CZK, validated server-side).
   const [promoInput, setPromoInput] = useState('')
   const [promoBusy, setPromoBusy] = useState(false)
@@ -53,13 +67,56 @@ export function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  const FREE_SHIP = settings.free_over_czk / CZK
-  const SHIPPING_FEE = settings.shipping_czk / CZK
+  // Load delivery methods once; preselect the cheapest/first one.
+  useEffect(() => {
+    let alive = true
+    void fetchShippingMethods().then((ms) => {
+      if (!alive) return
+      setMethods(ms)
+      if (ms.length > 0) setMethodCode((cur) => cur || ms[0].code)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const method = methods.find((m) => m.code === methodCode) ?? null
+  const needsPoint = method?.kind === 'pickup'
+
   const discountAmt = discount ? discount.czk / CZK : 0
   const giftAmt = gift ? gift.czk / CZK : 0
-  const shippingFree = subtotal - discountAmt >= FREE_SHIP
-  const shipping = shippingFree ? 0 : SHIPPING_FEE
+  const subtotalAfterDiscountCzk = (subtotal - discountAmt) * CZK
+
+  // Shipping comes from the selected method; falls back to global settings
+  // while the methods are still loading (or if none are configured).
+  const shippingCzk = method
+    ? shippingPriceCzk(method, subtotalAfterDiscountCzk)
+    : subtotalAfterDiscountCzk >= settings.free_over_czk
+      ? 0
+      : settings.shipping_czk
+  const shipping = shippingCzk / CZK
+  const shippingFree = shippingCzk === 0
   const total = Math.max(0, subtotal - discountAmt + shipping - giftAmt)
+
+  // Cash on delivery may be disabled for a specific method.
+  useEffect(() => {
+    if (method && !method.cod_allowed && payment === 'cod') setPayment('card')
+  }, [method, payment])
+
+  const choosePoint = async () => {
+    if (!method) return
+    setPointError('')
+    const key = settings.packeta_api_key
+    if (method.carrier === 'zasilkovna' && key) {
+      const chosen = await pickPacketaPoint(key)
+      if (chosen) setPoint(chosen)
+      return
+    }
+    // No embeddable widget for this carrier → open the public map; the
+    // customer types the branch name, which we store with the order.
+    const url = CARRIER_MAP_URLS[method.carrier ?? ''] ?? CARRIER_MAP_URLS.zasilkovna
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
 
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -115,8 +172,19 @@ export function CheckoutPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!supabase || cart.length === 0) return
+    // Pickup methods require a selected branch.
+    if (needsPoint && !point?.name) {
+      setPointError(c.pointRequired)
+      document.getElementById('shipping-methods')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
     setBusy(true)
     setError('')
+    const shippingPayload = {
+      shippingMethod: method?.code ?? null,
+      pickupPointId: point?.id ?? null,
+      pickupPointName: point?.name ?? null,
+    }
 
     if (payment === 'card') {
       // Server creates the order + Stripe Checkout Session and validates prices.
@@ -127,6 +195,7 @@ export function CheckoutPage() {
           body: JSON.stringify({
             locale,
             customer: form,
+            ...shippingPayload,
             discountCode: discount?.code || null,
             giftCode: gift?.code || null,
             items: cart.map((item) => ({
@@ -166,6 +235,7 @@ export function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customer: form,
+          ...shippingPayload,
           discountCode: discount?.code || null,
           giftCode: gift?.code || null,
           items: cart.map((item) => ({
@@ -291,6 +361,78 @@ export function CheckoutPage() {
               </label>
             </div>
 
+            {methods.length > 0 && (
+              <div className="checkout__panel" id="shipping-methods">
+                <h2>{c.shippingTitle}</h2>
+                {methods.map((m) => {
+                  const priceCzk = shippingPriceCzk(m, subtotalAfterDiscountCzk)
+                  return (
+                    <label
+                      className={`checkout__pay ${methodCode === m.code ? 'is-active' : ''}`}
+                      key={m.code}
+                    >
+                      <input
+                        type="radio"
+                        name="shipping"
+                        checked={methodCode === m.code}
+                        onChange={() => {
+                          setMethodCode(m.code)
+                          setPoint(null)
+                          setPointError('')
+                        }}
+                      />
+                      <div>
+                        <strong>
+                          {methodName(m, locale)}
+                          <span className="checkout__ship-price">
+                            {priceCzk === 0 ? c.free : formatPrice(priceCzk / CZK)}
+                          </span>
+                        </strong>
+                        {m.note_cs && <span>{m.note_cs}</span>}
+                      </div>
+                    </label>
+                  )
+                })}
+
+                {needsPoint && (
+                  <div className="checkout__point">
+                    {point ? (
+                      <div className="checkout__point-chosen">
+                        <span>
+                          📍 <strong>{point.name}</strong>
+                          <small>{c.pointChosen}</small>
+                        </span>
+                        <button type="button" className="btn btn--soft" onClick={() => void choosePoint()}>
+                          {c.changePoint}
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" className="btn btn--soft" onClick={() => void choosePoint()}>
+                        {method?.carrier === 'zasilkovna' && settings.packeta_api_key
+                          ? c.pickPoint
+                          : c.openMap}
+                      </button>
+                    )}
+                    {/* Fallback / manual entry — also lets customers correct the name. */}
+                    {(!settings.packeta_api_key || method?.carrier !== 'zasilkovna') && (
+                      <label className="checkout__point-manual">
+                        {c.pointManual} *
+                        <input
+                          value={point?.name ?? ''}
+                          onChange={(e) => {
+                            setPoint(e.target.value ? { id: '', name: e.target.value } : null)
+                            setPointError('')
+                          }}
+                          placeholder="např. Brno, Hviezdoslavova — Z-BOX"
+                        />
+                      </label>
+                    )}
+                    {pointError && <p className="checkout__promo-err">{pointError}</p>}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="checkout__panel">
               <h2>{c.payment}</h2>
               <label className={`checkout__pay ${payment === 'card' ? 'is-active' : ''}`}>
@@ -305,10 +447,15 @@ export function CheckoutPage() {
                   <span>{c.cardNote}</span>
                 </div>
               </label>
-              <label className={`checkout__pay ${payment === 'cod' ? 'is-active' : ''}`}>
+              <label
+                className={`checkout__pay ${payment === 'cod' ? 'is-active' : ''} ${
+                  method && !method.cod_allowed ? 'is-disabled' : ''
+                }`}
+              >
                 <input
                   type="radio"
                   name="payment"
+                  disabled={Boolean(method && !method.cod_allowed)}
                   checked={payment === 'cod'}
                   onChange={() => setPayment('cod')}
                 />
@@ -415,9 +562,18 @@ export function CheckoutPage() {
                 </div>
               )}
               <div>
-                <span>{dict.ui.cart.shipping}</span>
+                <span>
+                  {dict.ui.cart.shipping}
+                  {method ? ` · ${methodName(method, locale)}` : ''}
+                </span>
                 <span>{shippingFree ? dict.ui.cart.shippingFree : formatPrice(shipping)}</span>
               </div>
+              {point?.name && (
+                <div className="checkout__ship-point">
+                  <span>📍 {point.name}</span>
+                  <span />
+                </div>
+              )}
               {gift && (
                 <div className="checkout__promo-line">
                   <span>{c.promoGift} ({gift.code})</span>

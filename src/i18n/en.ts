@@ -227,6 +227,14 @@ export const en: Dictionary = {
       promoMin: 'This code requires a higher order value.',
       promoEmpty: 'There is no credit left on this gift card.',
       promoAlready: 'You already have a code of this type applied.',
+      shippingTitle: 'Delivery method',
+      pickPoint: '📍 Choose a pickup point',
+      changePoint: 'Change point',
+      pointChosen: 'Selected pickup point',
+      pointRequired: 'Please choose a pickup point.',
+      pointManual: 'Pickup point name',
+      openMap: 'Open pickup point map ↗',
+      free: 'Free',
     },
     footer: {
       tagline:

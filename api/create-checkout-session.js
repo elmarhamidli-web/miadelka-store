@@ -6,6 +6,7 @@ import Stripe from 'stripe'
 import {
   applyPromo,
   getActivePromotions,
+  getShippingMethod,
   promoPrice,
   redeemDiscount,
   redeemGiftCard,
@@ -55,30 +56,74 @@ async function cacheStripeProductId(productId, stripeProductId) {
   }
 }
 
+/** Product fields as they should look in Stripe, derived from our DB row. */
+function stripeProductFields(row) {
+  const image = row.colors?.find((c) => c.images?.length)?.images?.[0]
+  return {
+    name: row.name_cs || row.name_en || row.id,
+    description: (row.desc_cs || row.desc_en || '').slice(0, 400) || undefined,
+    images: image ? [image.startsWith('http') ? image : SITE + image] : undefined,
+  }
+}
+
+/** True when Stripe's copy differs from ours and needs updating. */
+function needsSync(existing, fields) {
+  if (existing.name !== fields.name) return true
+  if ((existing.description || undefined) !== fields.description) return true
+  const cur = existing.images?.[0] || undefined
+  const next = fields.images?.[0] || undefined
+  return cur !== next
+}
+
+/**
+ * Get the Stripe product for a catalogue row, creating it on first use.
+ * Name / description / photo are kept in sync automatically: whenever the
+ * shop owner renames a product or swaps its photo in the admin panel, the
+ * Stripe catalogue is updated on the next checkout. Prices are never stored
+ * in Stripe — they are sent per checkout from our database, so a price change
+ * in the admin panel takes effect immediately.
+ */
 async function getOrCreateStripeProduct(row) {
+  const fields = stripeProductFields(row)
+
   if (row.stripe_product_id) {
     try {
       const existing = await stripe.products.retrieve(row.stripe_product_id)
-      if (existing && !existing.deleted) return existing.id
+      if (existing && !existing.deleted) {
+        if (needsSync(existing, fields)) {
+          try {
+            await stripe.products.update(existing.id, {
+              ...fields,
+              images: fields.images ?? [],
+            })
+          } catch (err) {
+            console.error('Stripe product sync failed:', err.message)
+          }
+        }
+        return existing.id
+      }
     } catch {
       /* fall through and create */
     }
   }
+
   const search = await stripe.products.search({
     query: `metadata['pid']:'${row.id}'`,
     limit: 1,
   })
   let productId
   if (search.data.length > 0) {
-    productId = search.data[0].id
+    const found = search.data[0]
+    productId = found.id
+    if (needsSync(found, fields)) {
+      try {
+        await stripe.products.update(found.id, { ...fields, images: fields.images ?? [] })
+      } catch (err) {
+        console.error('Stripe product sync failed:', err.message)
+      }
+    }
   } else {
-    const image = row.colors?.find((c) => c.images?.length)?.images?.[0]
-    const created = await stripe.products.create({
-      name: row.name_cs || row.name_en || row.id,
-      description: (row.desc_cs || row.desc_en || '').slice(0, 400) || undefined,
-      images: image ? [image.startsWith('http') ? image : SITE + image] : undefined,
-      metadata: { pid: row.id },
-    })
+    const created = await stripe.products.create({ ...fields, metadata: { pid: row.id } })
     productId = created.id
   }
   await cacheStripeProductId(row.id, productId)
@@ -91,7 +136,16 @@ export default async function handler(req, res) {
     return
   }
   try {
-    const { customer, items, locale, discountCode, giftCode } = req.body || {}
+    const {
+      customer,
+      items,
+      locale,
+      discountCode,
+      giftCode,
+      shippingMethod,
+      pickupPointId,
+      pickupPointName,
+    } = req.body || {}
     if (
       !customer?.name ||
       !customer?.email ||
@@ -147,7 +201,12 @@ export default async function handler(req, res) {
     // 2. Shipping from settings + discount/gift card validation.
     const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
-    const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode })
+    const method = await getShippingMethod(shippingMethod)
+    if (method && method.kind === 'pickup' && !String(pickupPointName || '').trim()) {
+      res.status(400).json({ error: 'Pickup point required' })
+      return
+    }
+    const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode, method })
     const { shippingCzk } = promo
     const shippingFree = shippingCzk === 0
     const paidByGift = promo.totalCzk === 0
@@ -179,6 +238,10 @@ export default async function handler(req, res) {
       discount_czk: promo.discountCzk,
       gift_card_code: giftCzk > 0 ? promo.gift?.code || null : null,
       gift_card_czk: giftCzk,
+      shipping_method: method?.code || null,
+      shipping_name: method?.name_cs || null,
+      pickup_point_id: String(pickupPointId || '').slice(0, 60) || null,
+      pickup_point_name: String(pickupPointName || '').slice(0, 200) || null,
     }
     const orderRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/place_order`, {
       method: 'POST',
@@ -259,7 +322,9 @@ export default async function handler(req, res) {
         {
           shipping_rate_data: {
             type: 'fixed_amount',
-            display_name: shippingFree ? 'Doprava zdarma' : 'Doprava',
+            display_name: shippingFree
+              ? 'Doprava zdarma'
+              : method?.name_cs || 'Doprava',
             fixed_amount: { amount: shippingCzk * 100, currency: 'czk' },
           },
         },
@@ -268,6 +333,15 @@ export default async function handler(req, res) {
       payment_intent_data: {
         metadata: { order_number: String(orderNumber) },
         description: `Little One Store — objednávka #${orderNumber}`,
+      },
+      // Stripe issues a proper invoice/receipt PDF for every paid order.
+      invoice_creation: {
+        enabled: true,
+        invoice_data: {
+          description: `Little One Store — objednávka #${orderNumber}`,
+          metadata: { order_number: String(orderNumber) },
+          footer: 'Azruk s.r.o. · IČO 14420333 · Hviezdoslavova 545/41, 627 00 Brno',
+        },
       },
       success_url: `${origin}/checkout?success=1&order=${orderNumber}`,
       cancel_url: `${origin}/checkout?canceled=1`,

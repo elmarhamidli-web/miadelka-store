@@ -1939,6 +1939,61 @@
   color: var(--ink);
 }
 
+/* Checkout — delivery methods */
+.checkout__ship-price {
+  float: right;
+  color: var(--primary-strong);
+  font-weight: 900;
+}
+.checkout__pay.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.checkout__point {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+}
+.checkout__point-chosen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #e9f8ef;
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  flex-wrap: wrap;
+}
+.checkout__point-chosen small {
+  display: block;
+  color: #1f5e3a;
+  opacity: 0.75;
+  font-size: 0.78rem;
+}
+.checkout__point-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  font-weight: 800;
+  font-size: 0.88rem;
+}
+.checkout__point-manual input {
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+}
+.checkout__point-manual input:focus {
+  border-color: var(--primary);
+}
+.checkout__ship-point span {
+  color: var(--ink-soft) !important;
+  font-size: 0.85rem;
+}
+
 /* Checkout — discount code / gift card */
 .checkout__promo {
   margin: 18px 0 4px;

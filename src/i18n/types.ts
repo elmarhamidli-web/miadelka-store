@@ -195,6 +195,14 @@ export interface Dictionary {
       promoMin: string
       promoEmpty: string
       promoAlready: string
+      shippingTitle: string
+      pickPoint: string
+      changePoint: string
+      pointChosen: string
+      pointRequired: string
+      pointManual: string
+      openMap: string
+      free: string
     }
     footer: {
       tagline: string
