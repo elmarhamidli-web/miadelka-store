@@ -484,9 +484,9 @@ const ORDER_STATUSES: Record<string, string> = {
 const ACTIVE_STATUSES = ['new', 'paid', 'shipped', 'done']
 
 const ORDER_FILTERS: { key: 'active' | 'pending' | 'cancelled' | 'all'; label: string }[] = [
-  { key: 'active', label: 'Objednávky' },
-  { key: 'pending', label: 'Nedokončené' },
-  { key: 'cancelled', label: 'Zrušené' },
+  { key: 'active', label: '📦 Objednávky' },
+  { key: 'pending', label: '⏳ Nedokončené' },
+  { key: 'cancelled', label: '🚫 Zrušené' },
   { key: 'all', label: 'Vše' },
 ]
 
@@ -602,16 +602,21 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
             className={`admin__range-pill ${filter === f.key ? 'is-active' : ''}`}
             onClick={() => setFilter(f.key)}
           >
-            {f.label} ({counts[f.key]})
+            {f.label}
+            <span className="admin__range-count">{counts[f.key]}</span>
           </button>
         ))}
       </div>
 
       {filter === 'pending' && (
-        <p className="admin__muted admin__small" style={{ marginBottom: 12 }}>
-          Zákazník začal platbu kartou, ale nedokončil ji — objednávka není zaplacená a nic
-          neposílejte. Stripe takové pokusy sám po čase zruší a zboží se vrátí na sklad.
-        </p>
+        <div className="admin__notice">
+          <strong>⏳ Nedokončené pokusy o platbu</strong>
+          <span>
+            Zákazník začal platbu kartou, ale nedokončil ji — <strong>tyto objednávky nejsou
+            zaplacené, nic neposílejte</strong>. Stripe je po čase sám zruší a zboží se vrátí na
+            sklad. Do tržeb ani statistik se nepočítají.
+          </span>
+        </div>
       )}
 
       {shown.length === 0 && (
@@ -2011,7 +2016,9 @@ function ReviewsAdminView({
             onClick={() => setFilter(f.key)}
           >
             {f.label}
-            {f.key === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
+            {f.key === 'pending' && pendingCount > 0 && (
+              <span className="admin__range-count">{pendingCount}</span>
+            )}
           </button>
         ))}
       </div>

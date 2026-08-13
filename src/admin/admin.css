@@ -280,6 +280,119 @@
   opacity: 0.5;
 }
 
+/* Inline explanation banner */
+.admin__notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #fff4dd;
+  border-left: 4px solid #f0a92e;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  color: #6b5b6b;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  max-width: 78ch;
+}
+.admin__notice strong:first-child {
+  color: #8a6116;
+  font-size: 0.95rem;
+}
+
+/* Filter tabs (orders, reviews, stats periods) */
+.admin__range {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 14px rgba(58, 46, 58, 0.06);
+  width: fit-content;
+  max-width: 100%;
+}
+.admin__range-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: #6b5b6b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.admin__range-pill:hover {
+  background: #fdeee6;
+  color: #3a2e3a;
+}
+.admin__range-pill:active {
+  transform: scale(0.97);
+}
+.admin__range-pill.is-active {
+  background: linear-gradient(135deg, #ff7d9c 0%, #ef5f8d 100%);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(239, 95, 141, 0.32);
+}
+/* Count badge inside a tab */
+.admin__range-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #f0eaf0;
+  color: #6b5b6b;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+.admin__range-pill.is-active .admin__range-count {
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+.admin__range-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  font-weight: 700;
+  color: #6b5b6b;
+}
+.admin__range-custom input {
+  border: 1.5px solid #eadfd9;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+.admin__range-note {
+  padding: 0 12px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 720px) {
+  .admin__range {
+    width: 100%;
+    border-radius: var(--radius, 18px);
+  }
+  .admin__range-pill {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 0 14px;
+    font-size: 0.85rem;
+  }
+}
+
 .admin__status--pending {
   background: #fff4dd;
   color: #8a6116;
