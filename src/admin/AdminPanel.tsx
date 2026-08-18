@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, STORAGE_BUCKET } from '../lib/supabase'
 import type { ProductRow, SiteSettings } from '../data/productsStore'
 import { DEFAULT_SETTINGS } from '../data/productsStore'
 import type { CategoryId, ColorOption } from '../types'
 import { CARRIERS, makeTrackingUrl } from '../lib/carriers'
+import { parseVariants, variantKey, type StockVariants } from '../lib/stock'
 import './admin.css'
 
 /* ------------------------------------------------------------------ */
@@ -68,6 +69,7 @@ const emptyRow = (): ProductRow => ({
   material_en: null,
   material_uk: null,
   stock_qty: null,
+  stock_variants: {},
   seasons: [],
 })
 
@@ -164,24 +166,59 @@ function Login() {
 /* Dashboard                                                           */
 /* ------------------------------------------------------------------ */
 
+/* The open tab (and the open product) live in the address bar, so a page
+   refresh, a bookmark or the browser Back button all land where expected. */
+
+type AdminView =
+  | 'products'
+  | 'orders'
+  | 'inventory'
+  | 'shipping'
+  | 'promos'
+  | 'sales'
+  | 'reviews'
+  | 'subscribers'
+  | 'stats'
+  | 'settings'
+
+const ADMIN_VIEWS: AdminView[] = [
+  'products',
+  'orders',
+  'inventory',
+  'shipping',
+  'promos',
+  'sales',
+  'reviews',
+  'subscribers',
+  'stats',
+  'settings',
+]
+
+function readHash(): { view: AdminView; productId: string | null } {
+  const raw = window.location.hash.replace(/^#\/?/, '')
+  const [tab, ...rest] = raw.split('/')
+  const view = (ADMIN_VIEWS as string[]).includes(tab) ? (tab as AdminView) : 'products'
+  const id = decodeURIComponent(rest.join('/'))
+  return { view, productId: id || null }
+}
+
+function writeHash(view: AdminView, productId: string | null) {
+  const next = `#${view}${productId ? `/${encodeURIComponent(productId)}` : ''}`
+  if (window.location.hash !== next) {
+    window.history.replaceState(null, '', window.location.pathname + next)
+  }
+}
+
 function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const [rows, setRows] = useState<ProductRow[]>([])
   const [editing, setEditing] = useState<ProductRow | null>(null)
   const [isNew, setIsNew] = useState(false)
-  const [view, setView] = useState<
-    | 'products'
-    | 'orders'
-    | 'inventory'
-    | 'shipping'
-    | 'promos'
-    | 'sales'
-    | 'reviews'
-    | 'subscribers'
-    | 'stats'
-    | 'settings'
-  >('products')
+  const [view, setView] = useState<AdminView>(() => readHash().view)
   const [toast, setToast] = useState('')
   const [filter, setFilter] = useState('')
+  // Product id taken from the address bar on load — the form opens as soon as
+  // the catalogue arrives, so a refresh keeps you exactly where you were.
+  const [pendingEdit, setPendingEdit] = useState<string | null>(() => readHash().productId)
 
   const notify = useCallback((msg: string) => {
     setToast(msg)
@@ -199,6 +236,46 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   useEffect(() => {
     void load()
   }, [load])
+
+  // Keep the address bar in sync with what is on screen.
+  useEffect(() => {
+    writeHash(view, editing ? (isNew ? 'new' : editing.id) : null)
+  }, [view, editing, isNew])
+
+  // Reopen the product that was open before the refresh.
+  useEffect(() => {
+    if (!pendingEdit || rows.length === 0) return
+    if (pendingEdit === 'new') {
+      setEditing(emptyRow())
+      setIsNew(true)
+    } else {
+      const found = rows.find((r) => r.id === pendingEdit)
+      if (found) {
+        setEditing({ ...found })
+        setIsNew(false)
+      }
+    }
+    setPendingEdit(null)
+  }, [pendingEdit, rows])
+
+  // Browser Back / Forward inside the admin.
+  useEffect(() => {
+    const onPop = () => {
+      const { view: v, productId } = readHash()
+      setView(v)
+      if (productId) setPendingEdit(productId)
+      else setEditing(null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  /** Switching tabs always closes an open product form. */
+  const go = (next: AdminView) => {
+    setEditing(null)
+    setIsNew(false)
+    setView(next)
+  }
 
   const patch = async (id: string, changes: Partial<ProductRow>) => {
     const { error } = await supabase!.from('products').update(changes).eq('id', id)
@@ -240,61 +317,61 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
         <nav className="admin__tabs">
           <button
             className={view === 'products' ? 'is-active' : ''}
-            onClick={() => setView('products')}
+            onClick={() => go('products')}
           >
             Produkty
           </button>
           <button
             className={view === 'orders' ? 'is-active' : ''}
-            onClick={() => setView('orders')}
+            onClick={() => go('orders')}
           >
             Objednávky
           </button>
           <button
             className={view === 'inventory' ? 'is-active' : ''}
-            onClick={() => setView('inventory')}
+            onClick={() => go('inventory')}
           >
             Sklad
           </button>
           <button
             className={view === 'shipping' ? 'is-active' : ''}
-            onClick={() => setView('shipping')}
+            onClick={() => go('shipping')}
           >
             Doprava
           </button>
           <button
             className={view === 'sales' ? 'is-active' : ''}
-            onClick={() => setView('sales')}
+            onClick={() => go('sales')}
           >
             Akce
           </button>
           <button
             className={view === 'promos' ? 'is-active' : ''}
-            onClick={() => setView('promos')}
+            onClick={() => go('promos')}
           >
             Slevy a poukazy
           </button>
           <button
             className={view === 'reviews' ? 'is-active' : ''}
-            onClick={() => setView('reviews')}
+            onClick={() => go('reviews')}
           >
             Recenze
           </button>
           <button
             className={view === 'subscribers' ? 'is-active' : ''}
-            onClick={() => setView('subscribers')}
+            onClick={() => go('subscribers')}
           >
             Odběratelé
           </button>
           <button
             className={view === 'stats' ? 'is-active' : ''}
-            onClick={() => setView('stats')}
+            onClick={() => go('stats')}
           >
             Statistiky
           </button>
           <button
             className={view === 'settings' ? 'is-active' : ''}
-            onClick={() => setView('settings')}
+            onClick={() => go('settings')}
           >
             Nastavení
           </button>
@@ -314,6 +391,11 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
           notify={notify}
           products={rows}
           onStockChange={(id, qty) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, stock_qty: qty } : r)))}
+          onVariantsChange={(id, variants, qty) =>
+            setRows((rs) =>
+              rs.map((r) => (r.id === id ? { ...r, stock_variants: variants, stock_qty: qty } : r)),
+            )
+          }
           onSeasonsChange={(id, seasons) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, seasons } : r)))}
         />
       ) : view === 'shipping' ? (
@@ -1264,7 +1346,7 @@ interface MovementRow {
   type: 'delivery' | 'order' | 'restock' | 'adjustment'
   note: string | null
   order_number: number | null
-  items: { id: string; name?: string; qty: number }[]
+  items: { id: string; name?: string; qty: number; size?: string | null; color?: string | null }[]
   created_by: string | null
 }
 
@@ -1275,21 +1357,73 @@ const MOVEMENT_LABELS: Record<string, string> = {
   adjustment: '✏️ Ruční úprava',
 }
 
+/* ---- Read-only breakdown by colour + size ------------------------- */
+/* Editing lives in the product form (tab „Produkty"), so there is only
+   one place where the shop owner types numbers.                        */
+
+function VariantBreakdown({ row }: { row: ProductRow }) {
+  const saved = parseVariants(row.stock_variants)
+  const colors = row.colors ?? []
+  const sizes = row.sizes ?? []
+
+  if (Object.keys(saved).length === 0) {
+    return (
+      <p className="admin__muted admin__small">
+        Sklad se u tohoto produktu nesleduje po variantách. Rozepíšete ho v záložce
+        <strong> Produkty</strong> → otevřít produkt → sekce <strong>Barevné varianty a fotky</strong>.
+      </p>
+    )
+  }
+
+  return (
+    <div className="admin__breakdown">
+      {colors.map((c) => {
+        const lines = sizes
+          .map((s) => ({ size: s, qty: saved[variantKey(s, c.name)] }))
+          .filter((x) => x.qty != null)
+        if (lines.length === 0) return null
+        const total = lines.reduce((a, b) => a + (b.qty ?? 0), 0)
+        return (
+          <div className="admin__breakdown-col" key={c.name}>
+            <div className="admin__breakdown-head">
+              <span className="admin__matrix-dot" style={{ background: c.hex }} />
+              {c.name}
+              <span className="admin__breakdown-total">{total} ks</span>
+            </div>
+            {lines.map((l) => (
+              <div
+                className={`admin__breakdown-line ${(l.qty ?? 0) <= 0 ? 'is-out' : ''}`}
+                key={l.size}
+              >
+                <span>{l.size}</span>
+                <strong>{l.qty} ks</strong>
+              </div>
+            ))}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function InventoryView({
   notify,
   products,
   onStockChange,
+  onVariantsChange,
   onSeasonsChange,
 }: {
   notify: (m: string) => void
   products: ProductRow[]
   onStockChange: (id: string, qty: number | null) => void
+  onVariantsChange: (id: string, variants: StockVariants, qty: number) => void
   onSeasonsChange: (id: string, seasons: string[]) => void
 }) {
   const [movements, setMovements] = useState<MovementRow[]>([])
-  const [deliveryRows, setDeliveryRows] = useState<{ id: string; qty: string }[]>([
-    { id: '', qty: '' },
-  ])
+  const [openMatrix, setOpenMatrix] = useState<string | null>(null)
+  const [deliveryRows, setDeliveryRows] = useState<
+    { id: string; qty: string; size: string; color: string }[]
+  >([{ id: '', qty: '', size: '', color: '' }])
   const [deliveryNote, setDeliveryNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [edited, setEdited] = useState<Record<string, string>>({})
@@ -1355,7 +1489,12 @@ function InventoryView({
   const submitDelivery = async (e: FormEvent) => {
     e.preventDefault()
     const items = deliveryRows
-      .map((r) => ({ id: r.id, qty: parseInt(r.qty, 10) || 0 }))
+      .map((r) => ({
+        id: r.id,
+        qty: parseInt(r.qty, 10) || 0,
+        size: r.size.trim(),
+        color: r.color.trim(),
+      }))
       .filter((r) => r.id && r.qty > 0)
     if (items.length === 0) {
       notify('Vyberte alespoň jeden produkt a množství.')
@@ -1364,27 +1503,53 @@ function InventoryView({
     setBusy(true)
     for (const it of items) {
       const row = products.find((p) => p.id === it.id)
-      const current = row?.stock_qty ?? 0
-      const { error } = await supabase!
-        .from('products')
-        .update({ stock_qty: current + it.qty })
-        .eq('id', it.id)
-      if (error) {
-        notify('Chyba: ' + error.message)
-        setBusy(false)
-        return
+      if (!row) continue
+      // A delivery of a specific size + colour lands in that cell of the
+      // matrix; the total is then recomputed from the matrix.
+      if (it.size && it.color) {
+        const variants = parseVariants(row.stock_variants)
+        const k = variantKey(it.size, it.color)
+        variants[k] = (variants[k] ?? 0) + it.qty
+        const sum = Object.values(variants).reduce((a, b) => a + b, 0)
+        const { error } = await supabase!
+          .from('products')
+          .update({ stock_variants: variants, stock_qty: sum })
+          .eq('id', it.id)
+        if (error) {
+          notify('Chyba: ' + error.message)
+          setBusy(false)
+          return
+        }
+        onVariantsChange(it.id, variants, sum)
+      } else {
+        const current = row.stock_qty ?? 0
+        const { error } = await supabase!
+          .from('products')
+          .update({ stock_qty: current + it.qty })
+          .eq('id', it.id)
+        if (error) {
+          notify('Chyba: ' + error.message)
+          setBusy(false)
+          return
+        }
+        onStockChange(it.id, current + it.qty)
       }
-      onStockChange(it.id, current + it.qty)
     }
     const { error: mErr } = await supabase!.from('stock_movements').insert({
       type: 'delivery',
       note: deliveryNote.trim() || null,
-      items: items.map((it) => ({ id: it.id, name: name(it.id), qty: it.qty })),
+      items: items.map((it) => ({
+        id: it.id,
+        name: name(it.id),
+        size: it.size || null,
+        color: it.color || null,
+        qty: it.qty,
+      })),
       created_by: await userEmail(),
     })
     if (mErr) notify('Chyba záznamu: ' + mErr.message)
     else notify('Naskladnění uloženo ✓')
-    setDeliveryRows([{ id: '', qty: '' }])
+    setDeliveryRows([{ id: '', qty: '', size: '', color: '' }])
     setDeliveryNote('')
     setBusy(false)
     void loadMovements()
@@ -1397,12 +1562,18 @@ function InventoryView({
         <div className="admin__card">
           <h2 className="admin__chart-title">📦 Naskladnit zboží</h2>
           <form onSubmit={submitDelivery}>
-            {deliveryRows.map((r, i) => (
+            {deliveryRows.map((r, i) => {
+              const picked = products.find((p) => p.id === r.id)
+              return (
               <div className="admin__delivery-row" key={i}>
                 <select
                   value={r.id}
                   onChange={(e) =>
-                    setDeliveryRows((rs) => rs.map((x, j) => (j === i ? { ...x, id: e.target.value } : x)))
+                    setDeliveryRows((rs) =>
+                      rs.map((x, j) =>
+                        j === i ? { ...x, id: e.target.value, size: '', color: '' } : x,
+                      ),
+                    )
                   }
                 >
                   <option value="">— vyberte produkt —</option>
@@ -1410,6 +1581,30 @@ function InventoryView({
                     <option key={p.id} value={p.id}>
                       {p.name_cs ?? p.id}
                     </option>
+                  ))}
+                </select>
+                <select
+                  value={r.size}
+                  disabled={!picked || (picked.sizes ?? []).length === 0}
+                  onChange={(e) =>
+                    setDeliveryRows((rs) => rs.map((x, j) => (j === i ? { ...x, size: e.target.value } : x)))
+                  }
+                >
+                  <option value="">velikost — vše</option>
+                  {(picked?.sizes ?? []).map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <select
+                  value={r.color}
+                  disabled={!picked || (picked.colors ?? []).length === 0}
+                  onChange={(e) =>
+                    setDeliveryRows((rs) => rs.map((x, j) => (j === i ? { ...x, color: e.target.value } : x)))
+                  }
+                >
+                  <option value="">barva — vše</option>
+                  {(picked?.colors ?? []).map((c) => (
+                    <option key={c.name} value={c.name}>{c.name}</option>
                   ))}
                 </select>
                 <input
@@ -1431,12 +1626,19 @@ function InventoryView({
                   </button>
                 )}
               </div>
-            ))}
+              )
+            })}
+            <p className="admin__muted admin__small">
+              Vyberte velikost i barvu, pokud chcete naskladnit konkrétní variantu. Bez výběru
+              se kusy přičtou jen k celkovému stavu.
+            </p>
             <div className="admin__delivery-actions">
               <button
                 type="button"
                 className="admin__btn"
-                onClick={() => setDeliveryRows((rs) => [...rs, { id: '', qty: '' }])}
+                onClick={() =>
+                  setDeliveryRows((rs) => [...rs, { id: '', qty: '', size: '', color: '' }])
+                }
               >
                 + Další produkt
               </button>
@@ -1461,6 +1663,8 @@ function InventoryView({
           <p className="admin__muted admin__small">
             Prázdné pole = sklad se u produktu nesleduje. 0 = vyprodáno (produkt se na webu označí
             jako nedostupný). Objednávky odečítají kusy automaticky, zrušené objednávky je vrací.
+            Sklad po barvách a velikostech se vyplňuje v záložce <strong>Produkty</strong> u každé
+            barevné varianty; tady je jen přehled a naskladnění.
           </p>
           <table className="admin__table">
             <thead>
@@ -1472,8 +1676,13 @@ function InventoryView({
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
-                <tr key={p.id} className={p.stock_qty != null && p.stock_qty <= 0 ? 'is-muted' : ''}>
+              {products.map((p) => {
+                const variants = parseVariants(p.stock_variants)
+                const byVariant = Object.keys(variants).length > 0
+                const open = openMatrix === p.id
+                return (
+                <Fragment key={p.id}>
+                <tr className={p.stock_qty != null && p.stock_qty <= 0 ? 'is-muted' : ''}>
                   <td>
                     <div className="admin__stock-product">
                       <span className="admin__thumb admin__thumb--sm" style={{ background: p.gradient ?? '#eee' }}>
@@ -1487,21 +1696,37 @@ function InventoryView({
                     </div>
                   </td>
                   <td>
-                    <input
-                      className="admin__stock-input"
-                      type="number"
-                      min="0"
-                      placeholder="—"
-                      value={edited[p.id] ?? (p.stock_qty == null ? '' : String(p.stock_qty))}
-                      onChange={(e) => setEdited((s) => ({ ...s, [p.id]: e.target.value }))}
-                    />
+                    {byVariant ? (
+                      <span className="admin__stock-sum" title="Součet všech variant">
+                        {p.stock_qty ?? 0} ks
+                      </span>
+                    ) : (
+                      <input
+                        className="admin__stock-input"
+                        type="number"
+                        min="0"
+                        placeholder="—"
+                        value={edited[p.id] ?? (p.stock_qty == null ? '' : String(p.stock_qty))}
+                        onChange={(e) => setEdited((s) => ({ ...s, [p.id]: e.target.value }))}
+                      />
+                    )}
                   </td>
                   <td>
-                    {edited[p.id] !== undefined && (
-                      <button className="admin__btn admin__btn--primary" onClick={() => void saveAdjustment(p)}>
-                        Uložit
-                      </button>
-                    )}
+                    <div className="admin__stock-actions">
+                      {!byVariant && edited[p.id] !== undefined && (
+                        <button className="admin__btn admin__btn--primary" onClick={() => void saveAdjustment(p)}>
+                          Uložit
+                        </button>
+                      )}
+                      {byVariant && (
+                        <button
+                          className={`admin__btn admin__btn--ghost ${open ? 'is-open' : ''}`}
+                          onClick={() => setOpenMatrix(open ? null : p.id)}
+                        >
+                          🎨 Podle barev {open ? '▴' : '▾'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <div className="admin__season-mini">
@@ -1518,7 +1743,16 @@ function InventoryView({
                     </div>
                   </td>
                 </tr>
-              ))}
+                {open && (
+                  <tr className="admin__matrix-row">
+                    <td colSpan={4}>
+                      <VariantBreakdown row={p} />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
+                )
+              })}
             </tbody>
           </table>
           <p className="admin__muted admin__small">
@@ -1557,6 +1791,12 @@ function InventoryView({
                       <div key={i}>
                         <strong>{it.qty > 0 ? `+${it.qty}` : it.qty}</strong>{' '}
                         {it.name ?? name(it.id)}
+                        {(it.size || it.color) && (
+                          <span className="admin__muted admin__small">
+                            {' '}
+                            ({[it.size, it.color].filter(Boolean).join(' · ')})
+                          </span>
+                        )}
                       </div>
                     ))}
                   </td>
@@ -2978,6 +3218,51 @@ function ProductForm({
   const set = <K extends keyof ProductRow>(key: K, value: ProductRow[K]) =>
     setR((prev) => ({ ...prev, [key]: value }))
 
+  /* ---- stock per colour ------------------------------------------- */
+  // Rows are kept per colour *index*, so renaming or reordering a colour
+  // keeps its pieces with the right swatch.
+  const [stockRows, setStockRows] = useState<{ size: string; qty: string }[][]>(() => {
+    const saved = parseVariants(row.stock_variants)
+    const order = row.sizes ?? []
+    return row.colors.map((c) => {
+      const suffix = `__${c.name}`
+      return Object.entries(saved)
+        .filter(([k]) => k.endsWith(suffix))
+        .map(([k, v]) => ({ size: k.slice(0, k.length - suffix.length), qty: String(v) }))
+        .sort((a, b) => order.indexOf(a.size) - order.indexOf(b.size))
+    })
+  })
+
+  const rowsFor = (ci: number) => stockRows[ci] ?? []
+  const setRowsFor = (ci: number, next: { size: string; qty: string }[]) =>
+    setStockRows((rs) => {
+      const copy = r.colors.map((_, j) => rs[j] ?? [])
+      copy[ci] = next
+      return copy
+    })
+  const colorTotal = (ci: number) =>
+    rowsFor(ci).reduce((sum, x) => sum + (parseInt(x.qty, 10) || 0), 0)
+  /** Suggests the next size the shop owner has not used for this colour yet. */
+  const nextSize = (ci: number) => {
+    const used = new Set(rowsFor(ci).map((x) => x.size.trim()))
+    return (r.sizes ?? []).find((s) => s && !used.has(s)) ?? ''
+  }
+
+  /** Turns the per-colour rows into the stock_variants map + size list. */
+  const buildStock = () => {
+    const variants: StockVariants = {}
+    const sizes = [...(r.sizes ?? [])]
+    r.colors.forEach((c, ci) => {
+      for (const line of rowsFor(ci)) {
+        const s = line.size.trim()
+        if (!s || line.qty.trim() === '') continue
+        variants[variantKey(s, c.name)] = Math.max(0, parseInt(line.qty, 10) || 0)
+        if (!sizes.includes(s)) sizes.push(s)
+      }
+    })
+    return { variants, sizes }
+  }
+
   const uploadImages = async (colorIndex: number, files: FileList) => {
     setBusy(true)
     const productId = r.id || slugify(r.name_cs ?? '')
@@ -3017,11 +3302,19 @@ function ProductForm({
       return
     }
     setBusy(true)
+    const { variants, sizes } = buildStock()
+    const tracked = Object.keys(variants).length > 0
     const record: ProductRow = {
       ...r,
       id: r.id || slugify(r.name_cs),
-      sizes: r.sizes.filter(Boolean),
+      // Sizes typed into the stock table are added to the product's size list
+      // automatically, so the owner never has to fill them in twice.
+      sizes: (tracked ? sizes : r.sizes).filter(Boolean),
       ages: r.ages.filter(Boolean),
+      stock_variants: variants,
+      stock_qty: tracked
+        ? Object.values(variants).reduce((a, b) => a + b, 0)
+        : r.stock_qty,
     }
     const { error } = await supabase!.from('products').upsert(record)
     setBusy(false)
@@ -3241,7 +3534,12 @@ function ProductForm({
                 <button
                   type="button"
                   className="admin__btn admin__btn--small admin__btn--danger"
-                  onClick={() => set('colors', r.colors.filter((_, x) => x !== i))}
+                  onClick={() => {
+                    set('colors', r.colors.filter((_, x) => x !== i))
+                    setStockRows((rs) =>
+                      r.colors.map((_, j) => rs[j] ?? []).filter((_, x) => x !== i),
+                    )
+                  }}
                 >
                   Odebrat barvu
                 </button>
@@ -3266,14 +3564,80 @@ function ProductForm({
                 <span className="admin__muted">Zatím žádné fotky.</span>
               )}
             </div>
+
+            {/* -------- stock for this colour, size by size -------- */}
+            <div className="admin__color-stock">
+              <div className="admin__color-stock-head">
+                <strong>Sklad této barvy</strong>
+                <span className="admin__color-stock-total">{colorTotal(i)} ks</span>
+              </div>
+              {rowsFor(i).length === 0 && (
+                <p className="admin__muted admin__small">
+                  Zatím nevyplněno — sklad se u této barvy nesleduje.
+                </p>
+              )}
+              {rowsFor(i).map((line, x) => (
+                <div className="admin__stock-line" key={x}>
+                  <input
+                    list={`sizes-${i}`}
+                    placeholder="velikost"
+                    value={line.size}
+                    onChange={(e) =>
+                      setRowsFor(
+                        i,
+                        rowsFor(i).map((y, j) => (j === x ? { ...y, size: e.target.value } : y)),
+                      )
+                    }
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="ks"
+                    value={line.qty}
+                    onChange={(e) =>
+                      setRowsFor(
+                        i,
+                        rowsFor(i).map((y, j) => (j === x ? { ...y, qty: e.target.value } : y)),
+                      )
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="admin__btn admin__btn--small admin__btn--danger"
+                    aria-label="Odebrat řádek"
+                    onClick={() => setRowsFor(i, rowsFor(i).filter((_, j) => j !== x))}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <datalist id={`sizes-${i}`}>
+                {(r.sizes ?? []).map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              <button
+                type="button"
+                className="admin__btn admin__btn--small"
+                onClick={() => setRowsFor(i, [...rowsFor(i), { size: nextSize(i), qty: '' }])}
+              >
+                + Přidat velikost
+              </button>
+            </div>
           </div>
         ))}
+        <p className="admin__muted admin__small">
+          Velikosti si u každé barvy napíšete sami — do produktu se doplní automaticky. Celkový
+          stav skladu se spočítá jako součet všech barev a velikostí. Vyprodaná kombinace se na
+          webu zákazníkovi zašedne a nepůjde vybrat.
+        </p>
         <button
           type="button"
           className="admin__btn"
-          onClick={() =>
+          onClick={() => {
             set('colors', [...r.colors, { name: 'Nová barva', hex: '#f4b9c8', images: [] }])
-          }
+            setStockRows((rs) => [...r.colors.map((_, j) => rs[j] ?? []), []])
+          }}
         >
           + Přidat barevnou variantu
         </button>

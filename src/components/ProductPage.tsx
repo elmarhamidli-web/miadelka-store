@@ -9,6 +9,7 @@ import { track } from '../lib/analytics'
 import { applyProductSeo } from '../lib/seo'
 import { fadeUp, reveal, stagger } from '../lib/motion'
 import { fetchApprovedReviews, type ReviewRow } from '../lib/reviews'
+import { colorQty, tracksVariants, variantQty } from '../lib/stock'
 import { ProductCard } from './ProductCard'
 import {
   HeartIcon,
@@ -88,11 +89,31 @@ export function ProductPage() {
   const thumbs = photos ?? [product.emoji, '🧵', '📏', '🎁']
   const thumbIndex = Math.min(activeThumb, thumbs.length - 1)
 
-  const soldOut = product.inStock === false
+  /* ---- stock per size + colour -------------------------------------- */
+  const byVariant = tracksVariants(product)
+  const activeColor = product.colors[color]?.name ?? ''
+  // Switching colour can invalidate the chosen size, so the effective size is
+  // derived: keep the customer's pick while it is in stock, otherwise fall
+  // back to the first size still available in this colour.
+  const sizeInStock = (s: string) => !byVariant || (variantQty(product, s, activeColor) ?? 0) > 0
+  const chosenSize =
+    size && sizeInStock(size)
+      ? size
+      : (product.sizes.find(sizeInStock) ?? product.sizes[0])
+  /** Pieces left for the exact combination the customer is looking at. */
+  const pickedQty = byVariant ? (variantQty(product, chosenSize, activeColor) ?? 0) : null
+  const sizeUnavailable = (s: string) =>
+    byVariant && (variantQty(product, s, activeColor) ?? 0) <= 0
+  const colorUnavailable = (c: string) =>
+    byVariant && (colorQty(product, c, product.sizes) ?? 0) <= 0
+
+  const soldOut = product.inStock === false || (byVariant && (product.stockQty ?? 0) <= 0)
+  const pickUnavailable = !soldOut && byVariant && (pickedQty ?? 0) <= 0
 
   const handleAdd = (e: MouseEvent) => {
-    if (soldOut) return
-    addToCart(product, size ?? product.sizes[0], product.colors[color].name, qty)
+    if (soldOut || pickUnavailable) return
+    const max = pickedQty ?? Infinity
+    addToCart(product, chosenSize, activeColor, Math.min(qty, max))
     celebrate({ x: e.clientX, y: e.clientY })
     openCart()
   }
@@ -176,19 +197,31 @@ export function ProductPage() {
                 )}
               </div>
 
-              <p
-                className={`pdp__stock ${
-                  soldOut ? 'pdp__stock--out' : product.stockQty != null && product.stockQty <= 5 ? 'pdp__stock--low' : ''
-                }`}
-              >
-                {soldOut
-                  ? `✕ ${p.stockOut}`
-                  : product.stockQty != null
-                    ? product.stockQty <= 5
-                      ? `⚠ ${fmt(p.stockLow, { n: String(product.stockQty) })}`
-                      : `✓ ${fmt(p.stockCount, { n: String(product.stockQty) })}`
-                    : `✓ ${p.stockAvailable}`}
-              </p>
+              {(() => {
+                // With a size × colour matrix the number shown follows the
+                // exact combination the customer has selected.
+                const shown = byVariant ? pickedQty : product.stockQty
+                const out = soldOut || pickUnavailable
+                return (
+                  <p
+                    className={`pdp__stock ${
+                      out
+                        ? 'pdp__stock--out'
+                        : shown != null && shown <= 5
+                          ? 'pdp__stock--low'
+                          : ''
+                    }`}
+                  >
+                    {out
+                      ? `✕ ${p.stockOut}`
+                      : shown != null
+                        ? shown <= 5
+                          ? `⚠ ${fmt(p.stockLow, { n: String(shown) })}`
+                          : `✓ ${fmt(p.stockCount, { n: String(shown) })}`
+                        : `✓ ${p.stockAvailable}`}
+                  </p>
+                )
+              })()}
 
               <p className="pdp__desc">{productDescription(product.id, product.description)}</p>
 
@@ -197,33 +230,47 @@ export function ProductPage() {
                   {p.colour} — <strong>{colorName(product.colors[color].name)}</strong>
                 </span>
                 <div className="card__dots">
-                  {product.colors.map((col, i) => (
-                    <button
-                      key={col.name}
-                      className={`color-dot color-dot--lg ${i === color ? 'is-active' : ''}`}
-                      style={{ background: col.hex }}
-                      onClick={() => {
-                        setColor(i)
-                        setActiveThumb(0)
-                      }}
-                      aria-label={colorName(col.name)}
-                    />
-                  ))}
+                  {product.colors.map((col, i) => {
+                    const gone = colorUnavailable(col.name)
+                    return (
+                      <button
+                        key={col.name}
+                        className={`color-dot color-dot--lg ${i === color ? 'is-active' : ''} ${
+                          gone ? 'is-sold-out' : ''
+                        }`}
+                        style={{ background: col.hex }}
+                        disabled={gone}
+                        onClick={() => {
+                          setColor(i)
+                          setActiveThumb(0)
+                        }}
+                        aria-label={`${colorName(col.name)}${gone ? ` — ${p.stockOut}` : ''}`}
+                        title={gone ? p.stockOut : colorName(col.name)}
+                      />
+                    )
+                  })}
                 </div>
               </div>
 
               <div className="pdp__option">
                 <span className="pdp__option-label">{p.size}</span>
                 <div className="pdp__sizes">
-                  {product.sizes.map((s) => (
-                    <button
-                      key={s}
-                      className={`size-chip size-chip--lg ${size === s ? 'is-active' : ''}`}
-                      onClick={() => setSize(s)}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                  {product.sizes.map((s) => {
+                    const gone = sizeUnavailable(s)
+                    return (
+                      <button
+                        key={s}
+                        className={`size-chip size-chip--lg ${chosenSize === s ? 'is-active' : ''} ${
+                          gone ? 'is-sold-out' : ''
+                        }`}
+                        disabled={gone}
+                        title={gone ? p.stockOut : undefined}
+                        onClick={() => setSize(s)}
+                      >
+                        {s}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -233,17 +280,22 @@ export function ProductPage() {
                     <MinusIcon />
                   </button>
                   <span>{qty}</span>
-                  <button onClick={() => setQty((q) => q + 1)} aria-label={dict.ui.cart.increase}>
+                  <button
+                    onClick={() => setQty((q) => Math.min(pickedQty ?? 99, q + 1))}
+                    disabled={pickedQty != null && qty >= pickedQty}
+                    aria-label={dict.ui.cart.increase}
+                  >
                     <PlusIcon />
                   </button>
                 </div>
                 <button
                   className="btn btn--primary btn--lg pdp__add"
                   onClick={handleAdd}
-                  disabled={soldOut}
-                  style={soldOut ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                  disabled={soldOut || pickUnavailable}
+                  style={soldOut || pickUnavailable ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
                 >
-                  <CartPlusIcon /> {soldOut ? dict.ui.card.outOfStock : p.addToCart}
+                  <CartPlusIcon />{' '}
+                  {soldOut || pickUnavailable ? dict.ui.card.outOfStock : p.addToCart}
                 </button>
                 <button
                   className={`icon-btn pdp__wish ${wished ? 'is-active' : ''}`}

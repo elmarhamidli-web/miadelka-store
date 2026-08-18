@@ -949,3 +949,148 @@
     width: 100%;
   }
 }
+
+/* ---- Stock matrix (size × colour) --------------------------------- */
+.admin__stock-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.admin__stock-sum {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+.admin__btn--ghost {
+  background: transparent;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.admin__btn--ghost:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+.admin__btn--ghost.is-open {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+.admin__matrix-row > td {
+  background: #f8fafc;
+  padding: 14px 16px !important;
+}
+.admin__matrix {
+  overflow-x: auto;
+}.admin__matrix-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.15);
+  vertical-align: -1px;
+}
+
+/* ---- Read-only breakdown in the Sklad tab -------------------------- */
+.admin__breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.admin__breakdown-col {
+  min-width: 160px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+.admin__breakdown-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #0f172a;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.admin__breakdown-total {
+  margin-left: auto;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+.admin__breakdown-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 0.84rem;
+  padding: 3px 0;
+  color: #334155;
+}
+.admin__breakdown-line.is-out {
+  color: #b91c1c;
+  text-decoration: line-through;
+}
+
+/* ---- Stock per colour inside the product form ---------------------- */
+.admin__color-stock {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+}
+.admin__color-stock-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+.admin__color-stock-total {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+.admin__stock-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.admin__stock-line input {
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  background: #fff;
+  transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+.admin__stock-line input:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.admin__stock-line input[type='number'] {
+  width: 84px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+.admin__stock-line input:focus {
+  outline: none;
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}

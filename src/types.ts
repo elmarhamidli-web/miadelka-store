@@ -45,6 +45,8 @@ export interface Product {
   inStock?: boolean
   /** Remaining stock (null/undefined = not tracked). */
   stockQty?: number | null
+  /** Remaining stock per "size__colour" key (empty = not tracked per variant). */
+  stockVariants?: Record<string, number> | null
 }
 
 export interface CartItem {

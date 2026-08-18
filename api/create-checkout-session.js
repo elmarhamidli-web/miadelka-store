@@ -12,6 +12,7 @@ import {
   redeemGiftCard,
 } from './_lib/promo.js'
 import { sendOrderEmails } from './_lib/email.js'
+import { variantAvailable } from './_lib/stock.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
 const SUPABASE_ANON_KEY =
@@ -210,6 +211,11 @@ export default async function handler(req, res) {
         (row.stock_qty != null && row.stock_qty <= 0)
       ) {
         res.status(400).json({ error: `Product unavailable: ${item.id}` })
+        return
+      }
+      // Stock split by size + colour: the exact variant must be available.
+      if (!variantAvailable(row, item.size, item.color, qty)) {
+        res.status(400).json({ error: `Variant unavailable: ${item.id}` })
         return
       }
       const priceCzk = promoPrice(row, activePromos)

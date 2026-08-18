@@ -10,6 +10,7 @@ import {
 import type { Product, CategoryId, ColorOption } from '../types'
 import { products as bundledProducts } from './products'
 import { supabase } from '../lib/supabase'
+import { parseVariants } from '../lib/stock'
 
 /* ------------------------------------------------------------------ */
 /* Database row shape                                                  */
@@ -45,6 +46,8 @@ export interface ProductRow {
   material_en: string | null
   material_uk: string | null
   stock_qty: number | null
+  /** { "velikost__barva": kusů } — prázdné = sklad se nesleduje po variantách */
+  stock_variants: Record<string, number> | null
   seasons: string[]
 }
 
@@ -155,6 +158,7 @@ function rowToProduct(row: ProductRow, promos: Promotion[] = []): Product {
     isNew: row.is_new,
     inStock: row.in_stock && !soldOutByStock,
     stockQty: row.stock_qty,
+    stockVariants: parseVariants(row.stock_variants),
   }
 }
 

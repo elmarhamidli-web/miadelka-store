@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { tracksVariants, variantQty } from '../lib/stock'
 import type { Product } from '../types'
 import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
@@ -25,11 +26,25 @@ export function ProductCard({ product }: Props) {
 
   const soldOut = product.inStock === false
 
+  // With stock tracked per size + colour the quick-add must land on a
+  // combination that is actually available, otherwise it sends the customer
+  // to the product page to choose.
+  const byVariant = tracksVariants(product)
+  const colorName_ = product.colors[activeColor]?.name ?? ''
+  const sizeAvailable = (s: string) => !byVariant || (variantQty(product, s, colorName_) ?? 0) > 0
+  const pickedSize =
+    activeSize && sizeAvailable(activeSize)
+      ? activeSize
+      : (product.sizes.find(sizeAvailable) ?? null)
+
   const handleAdd = (e: MouseEvent) => {
     e.stopPropagation()
     if (soldOut) return
-    const size = activeSize ?? product.sizes[0]
-    addToCart(product, size, product.colors[activeColor].name, 1)
+    if (byVariant && !pickedSize) {
+      open()
+      return
+    }
+    addToCart(product, pickedSize ?? product.sizes[0], colorName_, 1)
     celebrate({ x: e.clientX, y: e.clientY })
     openCart()
   }
@@ -120,18 +135,25 @@ export function ProductCard({ product }: Props) {
         </div>
 
         <div className="card__sizes">
-          {product.sizes.slice(0, 4).map((s) => (
-            <button
-              key={s}
-              className={`size-chip ${activeSize === s ? 'is-active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                setActiveSize(s)
-              }}
-            >
-              {s}
-            </button>
-          ))}
+          {product.sizes.slice(0, 4).map((s) => {
+            const gone = !sizeAvailable(s)
+            return (
+              <button
+                key={s}
+                className={`size-chip ${pickedSize === s ? 'is-active' : ''} ${
+                  gone ? 'is-sold-out' : ''
+                }`}
+                disabled={gone}
+                title={gone ? dict.ui.card.outOfStock : undefined}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setActiveSize(s)
+                }}
+              >
+                {s}
+              </button>
+            )
+          })}
         </div>
 
         <div className="card__foot">
