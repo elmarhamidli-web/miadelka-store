@@ -1,5 +1,6 @@
 // Order e-mails via Resend (https://resend.com). Fire-and-forget helpers —
 // e-mail failures must never break order placement or payment processing.
+import { czk2 } from './money.js'
 
 const FROM = process.env.EMAIL_FROM || 'Little One Store <objednavky@littleonestore.cz>'
 const NOTIFY = process.env.ORDER_NOTIFY_EMAIL || 'info@littleonestore.cz'
@@ -69,9 +70,8 @@ function itemsTable(order) {
     Number(order.vat_czk) > 0
       ? `<tr>
         <td colspan="2" style="padding:6px 0 0;color:#8b7d8b;font-size:13px;">
-          Základ daně ${czk(order.vat_base_czk)} · DPH ${Number(order.vat_rate)} % ${czk(
-            order.vat_czk,
-          )} (v ceně)
+          Základ daně ${czk2(order.vat_base_czk)} · DPH ${Number(order.vat_rate)} %
+          ${czk2(order.vat_czk)} (v ceně)
         </td>
       </tr>`
       : ''

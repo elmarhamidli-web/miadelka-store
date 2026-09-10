@@ -7,6 +7,7 @@
 // proforma is a plain document of ours — no payment link anywhere — and the
 // real Stripe faktura is issued only once the money has actually arrived.
 import { createHmac } from 'node:crypto'
+import { czk2, splitVat } from './money.js'
 
 const SITE = 'https://www.littleonestore.cz'
 
@@ -21,8 +22,6 @@ export function proformaUrl(orderNumber) {
     orderNumber,
   )}`
 }
-
-const czk = (n) => `${Math.round(Number(n) || 0).toLocaleString('cs-CZ')} Kč`
 
 const esc = (s) =>
   String(s ?? '')
@@ -47,8 +46,8 @@ export function proformaHtml(order, { vatRate = 21 } = {}) {
       return `<tr>
         <td>${label}</td>
         <td class="num">${qty}</td>
-        <td class="num">${czk(it.price_czk)}</td>
-        <td class="num">${czk(Number(it.price_czk) * qty)}</td>
+        <td class="num">${czk2(it.price_czk)}</td>
+        <td class="num">${czk2(Number(it.price_czk) * qty)}</td>
       </tr>`
     })
     .join('')
@@ -57,24 +56,24 @@ export function proformaHtml(order, { vatRate = 21 } = {}) {
   if (Number(order.discount_czk) > 0) {
     extra.push(
       `<tr class="minus"><td colspan="3">Sleva ${esc(order.discount_code || '')}</td>
-       <td class="num">−${czk(order.discount_czk)}</td></tr>`,
+       <td class="num">−${czk2(order.discount_czk)}</td></tr>`,
     )
   }
   if (Number(order.shipping_czk) > 0) {
     extra.push(
       `<tr><td colspan="3">Doprava — ${esc(order.shipping_name || 'přeprava')}</td>
-       <td class="num">${czk(order.shipping_czk)}</td></tr>`,
+       <td class="num">${czk2(order.shipping_czk)}</td></tr>`,
     )
   }
   if (Number(order.gift_card_czk) > 0) {
     extra.push(
       `<tr class="minus"><td colspan="3">Dárkový poukaz ${esc(order.gift_card_code || '')}</td>
-       <td class="num">−${czk(order.gift_card_czk)}</td></tr>`,
+       <td class="num">−${czk2(order.gift_card_czk)}</td></tr>`,
     )
   }
 
   const total = Number(order.total_czk) || 0
-  const vat = vatRate > 0 ? Math.round(total - total / (1 + vatRate / 100)) : 0
+  const { baseCzk, vatCzk } = splitVat(total, vatRate)
 
   return `<!doctype html>
 <html lang="cs"><head><meta charset="utf-8"/>
@@ -165,12 +164,12 @@ export function proformaHtml(order, { vatRate = 21 } = {}) {
 
   <table class="totals">
     ${
-      vat > 0
-        ? `<tr><td>Základ daně</td><td class="num">${czk(total - vat)}</td></tr>
-           <tr><td>DPH ${vatRate} %</td><td class="num">${czk(vat)}</td></tr>`
+      vatCzk > 0
+        ? `<tr><td>Základ daně</td><td class="num">${czk2(baseCzk)}</td></tr>
+           <tr><td>DPH ${vatRate} %</td><td class="num">${czk2(vatCzk)}</td></tr>`
         : ''
     }
-    <tr class="grand"><td>Celkem k úhradě</td><td class="num">${czk(total)}</td></tr>
+    <tr class="grand"><td>Celkem k úhradě</td><td class="num">${czk2(total)}</td></tr>
   </table>
 
   <div class="note">
@@ -178,7 +177,7 @@ export function proformaHtml(order, { vatRate = 21 } = {}) {
     Částku uhradíte při převzetí zásilky — kurýrovi, hotově nebo kartou.
     Nic neplaťte předem. Daňový doklad vám pošleme e-mailem, jakmile platbu přijmeme.
     ${
-      vat > 0
+      vatCzk > 0
         ? `<br/>Ceny jsou uvedeny včetně DPH ${vatRate} %. Sleva i dárkový poukaz snižují základ daně.`
         : ''
     }

@@ -145,6 +145,44 @@ async function markSent(orderNumber) {
   }
 }
 
+/**
+ * Makes sure a Stripe invoice for an already-paid order is really marked paid.
+ * An invoice that stays "open" keeps a "Zaplatit online" link on its PDF, which
+ * on a paid order is simply wrong. Returns the up-to-date invoice.
+ */
+async function ensurePaid(invoice, order, vatRate) {
+  if (!invoice || invoice.status === 'paid') return invoice
+  if (invoice.status !== 'open') return invoice
+  try {
+    const wording = invoiceWording(order, vatRate)
+    await stripe.invoices.update(invoice.id, {
+      description: wording.description,
+      footer: wording.footer,
+    })
+  } catch (err) {
+    console.error('Invoice wording update failed:', err.message)
+  }
+  const paid = await stripe.invoices.pay(invoice.id, { paid_out_of_band: true })
+  if (paid.status !== 'paid') {
+    console.error(`Invoice ${invoice.id} still ${paid.status} after paying out of band`)
+  }
+  return paid
+}
+
+/** Finds the Stripe invoice belonging to an order, or null. */
+async function findStripeInvoice(order) {
+  try {
+    const customerId = await getCustomer(order)
+    const list = await stripe.invoices.list({ customer: customerId, limit: 100 })
+    return (
+      list.data.find((i) => i.metadata?.order_number === String(order.order_number)) ?? null
+    )
+  } catch (err) {
+    console.error('Invoice lookup failed:', err.message)
+    return null
+  }
+}
+
 /** Money is really in when a voucher covered it or the owner marked it paid. */
 function isSettled(order) {
   return (
@@ -270,12 +308,9 @@ export async function issueInvoiceForOrder(order, { vatRate = 21 } = {}) {
   const finalised =
     fresh.status === 'draft' ? await stripe.invoices.finalizeInvoice(invoice.id) : fresh
 
-  // Paid only when the money really is in. A dobírka invoice stays open, which
-  // is exactly what makes it a proforma with a working "Zaplatit online" link.
-  let current = finalised
-  if (settled && finalised.status === 'open') {
-    current = await stripe.invoices.pay(finalised.id, { paid_out_of_band: true })
-  }
+  // This branch only runs for an already-settled order, so the invoice must
+  // end up paid — otherwise its PDF would offer to pay it again.
+  const current = await ensurePaid(finalised, order, vatRate)
 
   const result = {
     invoiceUrl: current.hosted_invoice_url || null,
@@ -305,18 +340,6 @@ export async function settleInvoiceForOrder(order, { vatRate = 21 } = {}) {
   const number = order?.order_number
   if (!number) return { settled: false }
 
-  // Orders placed before the proforma became our own document still carry an
-  // open Stripe invoice — pay that one instead of issuing a second document.
-  // list(), not search(): the search index lags by up to a minute.
-  let existing = null
-  try {
-    const customerId = await getCustomer(order)
-    const list = await stripe.invoices.list({ customer: customerId, limit: 100 })
-    existing = list.data.find((i) => i.metadata?.order_number === String(number)) ?? null
-  } catch (err) {
-    console.error('Invoice lookup failed:', err.message)
-  }
-
   const store = async (result) => {
     await sb(`orders?order_number=eq.${encodeURIComponent(number)}`, {
       method: 'PATCH',
@@ -330,31 +353,14 @@ export async function settleInvoiceForOrder(order, { vatRate = 21 } = {}) {
     return result
   }
 
-  if (existing?.status === 'paid') {
+  // Orders placed before the proforma became our own document still carry a
+  // Stripe invoice — settle that one instead of issuing a second document.
+  const existing = await findStripeInvoice({ ...order, order_number: number })
+  if (existing) {
+    const paid = await ensurePaid(existing, { ...order, order_number: number }, vatRate)
     return store({
-      settled: true,
-      alreadyPaid: true,
-      invoiceUrl: existing.hosted_invoice_url || null,
-      invoicePdf: existing.invoice_pdf || null,
-      invoiceStatus: 'paid',
-    })
-  }
-
-  if (existing?.status === 'open') {
-    // Description and footer stay editable after finalisation, so the same
-    // document can stop calling itself a proforma.
-    const wording = invoiceWording({ ...order, order_number: number }, vatRate)
-    try {
-      await stripe.invoices.update(existing.id, {
-        description: wording.description,
-        footer: wording.footer,
-      })
-    } catch (err) {
-      console.error('Invoice wording update failed:', err.message)
-    }
-    const paid = await stripe.invoices.pay(existing.id, { paid_out_of_band: true })
-    return store({
-      settled: true,
+      settled: paid.status === 'paid',
+      alreadyPaid: existing.status === 'paid',
       invoiceUrl: paid.hosted_invoice_url || null,
       invoicePdf: paid.invoice_pdf || null,
       invoiceStatus: 'paid',
@@ -469,6 +475,28 @@ export default async function handler(req, res) {
       if (!order.invoice_url && !order.invoice_pdf) {
         const issued = await issueInvoiceForOrder(order, { vatRate })
         current = { ...order, ...toOrderFields(issued) }
+      } else if (order.invoice_status === 'paid') {
+        // Repair: an invoice left "open" by an earlier run still shows
+        // "Zaplatit online". Settle it and refresh the stored links.
+        const inv = await findStripeInvoice(order)
+        if (inv && inv.status === 'open') {
+          const fixed = await ensurePaid(inv, order, vatRate)
+          current = {
+            ...order,
+            invoice_url: fixed.hosted_invoice_url || order.invoice_url,
+            invoice_pdf: fixed.invoice_pdf || order.invoice_pdf,
+            invoice_status: 'paid',
+          }
+          await sb(`orders?order_number=eq.${encodeURIComponent(orderNumber)}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({
+              invoice_url: current.invoice_url,
+              invoice_pdf: current.invoice_pdf,
+              invoice_status: 'paid',
+            }),
+          })
+        }
       }
       await sendInvoiceEmail(current, { proforma: current.invoice_status === 'proforma' })
       await markSent(orderNumber)

@@ -14,6 +14,7 @@ import {
 } from './_lib/promo.js'
 import { sendGiftCardEmail, sendOrderEmails } from './_lib/email.js'
 import { variantAvailable } from './_lib/stock.js'
+import { splitVat } from './_lib/money.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
 const SUPABASE_ANON_KEY =
@@ -131,15 +132,6 @@ function giftMode(row, requested) {
     : [row.gift_delivery || 'online']
   const want = String(requested || '')
   return allowed.includes(want) ? want : allowed[0]
-}
-
-/** Splits a VAT-inclusive amount into net base and tax (both CZK, rounded). */
-function splitVat(totalCzk, percent) {
-  const total = Math.round(Number(totalCzk) || 0)
-  const rate = Number(percent) || 0
-  if (!(total > 0) || !(rate > 0)) return { baseCzk: total, vatCzk: 0 }
-  const vatCzk = Math.round(total - total / (1 + rate / 100))
-  return { baseCzk: total - vatCzk, vatCzk }
 }
 
 /** True when Stripe's copy differs from ours and needs updating. */

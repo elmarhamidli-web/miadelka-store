@@ -12,6 +12,7 @@ import {
   redeemGiftCard,
 } from './_lib/promo.js'
 import { variantAvailable } from './_lib/stock.js'
+import { splitVat } from './_lib/money.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
 const SUPABASE_ANON_KEY =
@@ -138,11 +139,10 @@ export default async function handler(req, res) {
     const paidByGift = promo.totalCzk === 0
 
     // Prices are VAT-inclusive, so the tax sits inside whatever remains after
-    // the discount and the voucher have been deducted.
+    // the discount and the voucher have been deducted — to the haléř.
     const vatPayer = shippingCfg.vat_payer !== false
     const vatRate = vatPayer ? Number(shippingCfg.vat_rate ?? 21) : 0
-    const vatCzk =
-      vatRate > 0 ? Math.round(promo.totalCzk - promo.totalCzk / (1 + vatRate / 100)) : 0
+    const { baseCzk: vatBaseCzk, vatCzk } = splitVat(promo.totalCzk, vatRate)
 
     const orderPayload = {
       customer_name: customer.name,
@@ -163,7 +163,7 @@ export default async function handler(req, res) {
       gift_card_czk: promo.giftCzk,
       vat_rate: vatRate || null,
       vat_czk: vatCzk,
-      vat_base_czk: promo.totalCzk - vatCzk,
+      vat_base_czk: vatBaseCzk,
       shipping_method: method?.code || null,
       shipping_name: method?.name_cs || null,
       pickup_point_id: String(pickupPointId || '').slice(0, 60) || null,

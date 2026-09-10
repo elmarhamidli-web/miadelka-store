@@ -917,8 +917,8 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                     <strong>Celkem: {o.total_czk} Kč</strong>
                     {Number(o.vat_czk) > 0 && (
                       <span className="admin__muted admin__small">
-                        z toho základ daně {o.vat_base_czk} Kč · DPH {o.vat_rate} %{' '}
-                        {o.vat_czk} Kč
+                        z toho základ daně {czk2(o.vat_base_czk)} · DPH {o.vat_rate} %{' '}
+                        {czk2(o.vat_czk)}
                       </span>
                     )}
                   </p>
@@ -3032,6 +3032,13 @@ interface OrdStatRow {
 }
 
 const czk = (n: number) => `${Math.round(n).toLocaleString('cs-CZ')} Kč`
+
+/** Tax figures are never whole crowns — always show the haléře. */
+const czk2 = (n: number | null | undefined) =>
+  `${Number(n ?? 0).toLocaleString('cs-CZ', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} Kč`
 const startOfDay = (d: Date) => {
   const x = new Date(d)
   x.setHours(0, 0, 0, 0)

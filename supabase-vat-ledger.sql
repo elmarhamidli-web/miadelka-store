@@ -9,8 +9,13 @@
 --      základ   = celkem - dph
 alter table public.orders
   add column if not exists vat_rate      numeric,
-  add column if not exists vat_czk       integer,
-  add column if not exists vat_base_czk  integer;
+  add column if not exists vat_czk       numeric(12,2),
+  add column if not exists vat_base_czk  numeric(12,2);
+
+-- Kdyby sloupce vznikly dřív jako integer, převedeme je na haléře.
+alter table public.orders
+  alter column vat_czk      type numeric(12,2),
+  alter column vat_base_czk type numeric(12,2);
 
 -- 2) Kniha uplatnění slevových kódů a dárkových poukazů.
 --    Každé použití je samostatný řádek — jde dohledat, kdo, kdy, na kterou

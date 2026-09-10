@@ -16,8 +16,18 @@ create index if not exists events_type_created_idx
   on public.events (type, created_at desc);
 
 -- Recenze na stránce produktu.
-create index if not exists reviews_product_idx
-  on public.reviews (product_id, approved);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'reviews' and column_name = 'status'
+  ) then
+    execute 'create index if not exists reviews_product_idx on public.reviews (product_id, status)';
+  else
+    execute 'create index if not exists reviews_product_idx on public.reviews (product_id)';
+  end if;
+end
+$$;
 
 -- Faktury a poukazy dohledávané podle objednávky.
 create index if not exists orders_order_number_idx
