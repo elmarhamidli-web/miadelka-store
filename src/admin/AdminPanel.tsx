@@ -631,7 +631,10 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
         },
         body: JSON.stringify({ orderNumber, action }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 401) {
+        throw new Error('Přihlaste se prosím znovu (relace vypršela).')
+      }
       if (!res.ok) throw new Error(data.error || 'Nepodařilo se zpracovat fakturu.')
       setOrders((os) =>
         os.map((o) =>
@@ -912,7 +915,7 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                       <div className="admin__invoice-row">
                         {link && (
                           <a className="admin__btn" href={link} target="_blank" rel="noreferrer">
-                            📄 {proforma ? 'Zálohová faktura (PDF)' : 'Faktura (PDF)'}
+                            📄 {proforma ? 'Zálohová faktura' : 'Faktura (PDF)'}
                           </a>
                         )}
                         {!link && (
@@ -949,8 +952,8 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                         )}
                         {proforma && (
                           <span className="admin__muted admin__small admin__invoice-hint">
-                            Zálohová faktura — zákazník ji může zaplatit online. Daňový doklad
-                            se pošle po kliknutí na „Zaplaceno".
+                            Zálohová faktura — zákazník platí až při převzetí. Daňový doklad
+                            se vystaví a pošle po kliknutí na „Zaplaceno".
                           </span>
                         )}
                       </div>

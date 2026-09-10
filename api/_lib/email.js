@@ -121,13 +121,13 @@ export function customerOrderEmail(order) {
   const invoiceBlock = invoiceLink
     ? `<p style="text-align:center;margin:22px 0 6px;">
          <a href="${invoiceLink}" style="display:inline-block;background:#fff;border:2px solid #ef5f8d;color:#ef5f8d;text-decoration:none;font-weight:700;padding:11px 26px;border-radius:999px;">
-           📄 ${proforma ? 'Zálohová faktura (PDF)' : 'Faktura (PDF)'}
+           📄 ${proforma ? 'Zálohová faktura' : 'Faktura (PDF)'}
          </a>
        </p>${
          proforma
            ? `<p style="text-align:center;color:#8b7d8b;font-size:13px;margin:0 0 6px;line-height:1.6;">
-                Zálohovou fakturu můžete zaplatit online odkazem ve faktuře — nebo prostě
-                zaplatit až při převzetí. Daňový doklad vám pošleme po úhradě.
+                Nic neplaťte předem — částku uhradíte při převzetí zásilky.
+                Daňový doklad vám pošleme e-mailem, jakmile platbu přijmeme.
               </p>`
            : ''
        }`
@@ -163,13 +163,12 @@ export function customerPaidEmail(order) {
   const invoiceBlock = invoiceLink
     ? `<p style="text-align:center;margin:22px 0 6px;">
          <a href="${invoiceLink}" style="display:inline-block;background:#fff;border:2px solid #ef5f8d;color:#ef5f8d;text-decoration:none;font-weight:700;padding:11px 26px;border-radius:999px;">
-           📄 ${proforma ? 'Zálohová faktura (PDF)' : 'Stáhnout fakturu (PDF)'}
+           📄 ${proforma ? 'Zálohová faktura' : 'Stáhnout fakturu (PDF)'}
          </a>
        </p>${
          proforma
            ? `<p style="text-align:center;color:#8b7d8b;font-size:13px;margin:0 0 6px;line-height:1.6;">
-                Zálohovou fakturu můžete zaplatit online — nebo prostě zaplaťte
-                při převzetí. Daňový doklad vám pošleme po úhradě.
+                Nic neplaťte předem — částku uhradíte při převzetí zásilky.
               </p>`
            : ''
        }`
@@ -539,8 +538,8 @@ export async function sendInvoiceEmail(order, { proforma = false } = {}) {
         ${
           proforma
             ? `Posíláme zálohovou fakturu k objednávce <strong>#${order.order_number}</strong>.
-               Můžete ji zaplatit online přes odkaz ve faktuře, nebo zaplatit až při
-               převzetí zásilky. Daňový doklad vám pošleme, jakmile platbu přijmeme.`
+               Nic neplaťte předem — částku uhradíte při převzetí zásilky.
+               Daňový doklad vám pošleme, jakmile platbu přijmeme.`
             : `Posíláme fakturu k objednávce <strong>#${order.order_number}</strong>.
                Děkujeme za nákup a za platbu.`
         }

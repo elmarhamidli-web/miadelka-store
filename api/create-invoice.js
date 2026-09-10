@@ -3,17 +3,20 @@
 //
 // Two states, because a Czech invoice must not claim money that has not
 // arrived:
-//   • money not in yet  → ZÁLOHOVÁ FAKTURA (proforma). Stays "open" in Stripe,
-//     so its hosted page offers "Zaplatit online" — the customer may pay it
-//     early instead of on delivery.
-//   • money in          → the same invoice is marked paid out of band and the
-//     wording switches to a plain faktura, which is the daňový doklad.
+//   • money not in yet  → ZÁLOHOVÁ FAKTURA (proforma), rendered by us at
+//     /api/proforma. Deliberately NOT a Stripe invoice: an open Stripe invoice
+//     always shows "Zaplatit online", and a cash-on-delivery parcel is already
+//     registered with the carrier as pay-on-delivery — the customer must not
+//     be invited to pay twice.
+//   • money in          → a real Stripe invoice, marked paid out of band.
+//     That PDF is the daňový doklad.
 //
 // Card orders never reach this file: Stripe Checkout already issues a paid
 // invoice for them, and the webhook mails it with the confirmation.
 import Stripe from 'stripe'
 import { sendGiftCardEmail, sendInvoiceEmail } from './_lib/email.js'
 import { activateGiftCardsForOrder } from './_lib/promo.js'
+import { proformaUrl } from './_lib/proforma.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
 const SUPABASE_ANON_KEY =
@@ -100,25 +103,14 @@ const SELLER_BLOCK =
   'IČO: 14420333 · DIČ: CZ14420333 · Bankovní účet: 7441532004/5500\n' +
   'info@littleonestore.cz · www.littleonestore.cz'
 
-/** Title and footer differ for a proforma and for the real tax document. */
-function invoiceWording(order, vatRate, settled) {
+/** Wording of the real (paid) faktura. */
+function invoiceWording(order, vatRate) {
   const vatLine =
     vatRate > 0
       ? `Ceny jsou uvedeny včetně DPH ${vatRate} %. Sleva i dárkový poukaz snižují ` +
         `základ daně — DPH se počítá až z částky po jejich odečtení.\n`
       : 'Všechny uvedené částky jsou konečné.\n'
 
-  if (!settled) {
-    return {
-      description: `ZÁLOHOVÁ FAKTURA (proforma) — objednávka #${order.order_number}`,
-      footer:
-        'Toto je zálohová faktura, není daňovým dokladem. Můžete ji zaplatit online ' +
-        'odkazem výše, nebo zaplatit až při převzetí zásilky. Po přijetí platby vám ' +
-        'pošleme daňový doklad.\n' +
-        vatLine +
-        SELLER_BLOCK,
-    }
-  }
   const paidLabel =
     order.payment_method === 'gift_card'
       ? 'Uhrazeno dárkovým poukazem'
@@ -164,14 +156,29 @@ function isSettled(order) {
 export async function issueInvoiceForOrder(order, { vatRate = 21 } = {}) {
   if (!order) throw new Error('Order missing')
   const number = order.order_number
+  const settled = isSettled(order)
 
-  // Already invoiced → hand the existing links back. Settling an open invoice
-  // later (COD money arrives) is handled by settleInvoiceForOrder().
-  if (order.invoice_pdf || order.invoice_url) {
+  // Money not in yet → our own proforma. No Stripe, therefore no pay button.
+  if (!settled) {
+    const url = proformaUrl(number)
+    await sb(`orders?order_number=eq.${encodeURIComponent(number)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        invoice_url: url,
+        invoice_pdf: null,
+        invoice_status: 'proforma',
+      }),
+    })
+    return { invoiceUrl: url, invoicePdf: null, invoiceStatus: 'proforma', skipped: false }
+  }
+
+  // Already has a real (paid) faktura → hand the links back untouched.
+  if (order.invoice_status === 'paid' && (order.invoice_pdf || order.invoice_url)) {
     return {
       invoiceUrl: order.invoice_url,
       invoicePdf: order.invoice_pdf,
-      invoiceStatus: order.invoice_status || 'paid',
+      invoiceStatus: 'paid',
       skipped: true,
     }
   }
@@ -179,8 +186,7 @@ export async function issueInvoiceForOrder(order, { vatRate = 21 } = {}) {
   const customerId = await getCustomer(order)
   const taxRates = vatRate > 0 ? [await getVatRateId(vatRate)] : undefined
 
-  const settled = isSettled(order)
-  const wording = invoiceWording(order, vatRate, settled)
+  const wording = invoiceWording(order, vatRate)
 
   // The draft is created FIRST and every line is attached to it explicitly.
   // Relying on Stripe's "pending invoice items" would both miss the lines
@@ -299,66 +305,73 @@ export async function settleInvoiceForOrder(order, { vatRate = 21 } = {}) {
   const number = order?.order_number
   if (!number) return { settled: false }
 
-  // list(), not search(): the search index lags by up to a minute, and the
-  // invoice we are settling may have been created seconds ago.
-  const customerId = await getCustomer(order)
-  const list = await stripe.invoices.list({ customer: customerId, limit: 100 })
-  const inv = list.data.find((i) => i.metadata?.order_number === String(number))
-  if (!inv) return { settled: false }
+  // Orders placed before the proforma became our own document still carry an
+  // open Stripe invoice — pay that one instead of issuing a second document.
+  // list(), not search(): the search index lags by up to a minute.
+  let existing = null
+  try {
+    const customerId = await getCustomer(order)
+    const list = await stripe.invoices.list({ customer: customerId, limit: 100 })
+    existing = list.data.find((i) => i.metadata?.order_number === String(number)) ?? null
+  } catch (err) {
+    console.error('Invoice lookup failed:', err.message)
+  }
 
-  if (inv.status === 'paid') {
-    // The customer paid the proforma online. Nothing notifies us, so record it
-    // now — otherwise the row stays 'proforma' forever.
-    const already = {
-      settled: true,
-      alreadyPaid: true,
-      invoiceUrl: inv.hosted_invoice_url || null,
-      invoicePdf: inv.invoice_pdf || null,
-      invoiceStatus: 'paid',
-    }
+  const store = async (result) => {
     await sb(`orders?order_number=eq.${encodeURIComponent(number)}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({
-        invoice_url: already.invoiceUrl,
-        invoice_pdf: already.invoicePdf,
+        invoice_url: result.invoiceUrl,
+        invoice_pdf: result.invoicePdf,
         invoice_status: 'paid',
       }),
     })
-    return already
+    return result
   }
-  if (inv.status !== 'open') return { settled: false }
 
-  // Description and footer stay editable after finalisation, so the same
-  // document can stop calling itself a proforma.
-  const wording = invoiceWording({ ...order, order_number: number }, vatRate, true)
-  try {
-    await stripe.invoices.update(inv.id, {
-      description: wording.description,
-      footer: wording.footer,
+  if (existing?.status === 'paid') {
+    return store({
+      settled: true,
+      alreadyPaid: true,
+      invoiceUrl: existing.hosted_invoice_url || null,
+      invoicePdf: existing.invoice_pdf || null,
+      invoiceStatus: 'paid',
     })
-  } catch (err) {
-    console.error('Invoice wording update failed:', err.message)
   }
 
-  const paid = await stripe.invoices.pay(inv.id, { paid_out_of_band: true })
-  const result = {
-    settled: true,
-    invoiceUrl: paid.hosted_invoice_url || null,
-    invoicePdf: paid.invoice_pdf || null,
+  if (existing?.status === 'open') {
+    // Description and footer stay editable after finalisation, so the same
+    // document can stop calling itself a proforma.
+    const wording = invoiceWording({ ...order, order_number: number }, vatRate)
+    try {
+      await stripe.invoices.update(existing.id, {
+        description: wording.description,
+        footer: wording.footer,
+      })
+    } catch (err) {
+      console.error('Invoice wording update failed:', err.message)
+    }
+    const paid = await stripe.invoices.pay(existing.id, { paid_out_of_band: true })
+    return store({
+      settled: true,
+      invoiceUrl: paid.hosted_invoice_url || null,
+      invoicePdf: paid.invoice_pdf || null,
+      invoiceStatus: 'paid',
+    })
+  }
+
+  // Normal path: the proforma was ours, so the real faktura is created now.
+  const issued = await issueInvoiceForOrder(
+    { ...order, status: 'paid', invoice_url: null, invoice_pdf: null, invoice_status: null },
+    { vatRate },
+  )
+  return {
+    settled: Boolean(issued.invoiceUrl || issued.invoicePdf),
+    invoiceUrl: issued.invoiceUrl,
+    invoicePdf: issued.invoicePdf,
     invoiceStatus: 'paid',
   }
-
-  await sb(`orders?order_number=eq.${encodeURIComponent(number)}`, {
-    method: 'PATCH',
-    headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify({
-      invoice_url: result.invoiceUrl,
-      invoice_pdf: result.invoicePdf,
-      invoice_status: 'paid',
-    }),
-  })
-  return result
 }
 
 export default async function handler(req, res) {
