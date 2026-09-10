@@ -1,6 +1,8 @@
 module.exports = {
   root: true,
   env: { browser: true, es2020: true },
+  // The files under api/ are Vercel serverless functions — Node, not browser.
+  overrides: [{ files: ['api/**/*.js'], env: { node: true, browser: false } }],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',

@@ -40,6 +40,13 @@ create trigger products_stock_total_trg
 before insert or update on public.products
 for each row execute function public.products_stock_total();
 
+-- 4-5) ZASTARALÉ — tuhle část NESPOUŠTĚJTE.
+--
+-- Skladovou logiku (funkce apply_order_stock, orders_stock_sync a trigger)
+-- dnes instaluje supabase-stock-fix.sql. Verze níže obsahuje chybu, kvůli
+-- které se u produktu se skladem po variantách ztratil kus, když se
+-- kombinace velikost+barva v matici nenašla. Ponecháno jen kvůli historii.
+/*
 -- 4) Odečtení / vrácení kusů podle položek objednávky
 --    p_sign =  1 → objednávka odebírá ze skladu
 --    p_sign = -1 → zrušená objednávka vrací zpět
@@ -157,6 +164,8 @@ drop trigger if exists orders_stock_sync_trg on public.orders;
 create trigger orders_stock_sync_trg
 after insert or update of status on public.orders
 for each row execute function public.orders_stock_sync();
+
+*/
 
 -- 6) Kontrola: nesmí zůstat žádná jiná funkce, která sama mění stock_qty.
 select p.proname as funkce_menici_sklad

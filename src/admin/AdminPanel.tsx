@@ -1737,12 +1737,34 @@ function InventoryView({
       notify('Vyberte alespoň jeden produkt a množství.')
       return
     }
+    // Refuse the whole delivery before writing anything, so a bad line can
+    // never leave half of it applied.
+    for (const it of items) {
+      const row = products.find((p) => p.id === it.id)
+      if (!row) continue
+      const tracked = Object.keys(parseVariants(row.stock_variants)).length > 0
+      const name = row.name_cs ?? row.id
+      if (tracked && !(it.size && it.color)) {
+        notify(`U „${name}" se sklad vede po velikostech a barvách — vyberte obojí.`)
+        return
+      }
+      if (!tracked && it.size && it.color && (row.stock_qty ?? 0) > 0) {
+        // Switching a product to the matrix here would throw away the total
+        // it already has, because the total is recomputed from the matrix.
+        notify(
+          `„${name}" má zatím jen celkový sklad (${row.stock_qty} ks). ` +
+            'Rozepište ho nejdřív po velikostech v záložce Produkty.',
+        )
+        return
+      }
+    }
+
     setBusy(true)
     for (const it of items) {
       const row = products.find((p) => p.id === it.id)
       if (!row) continue
       // A delivery of a specific size + colour lands in that cell of the
-      // matrix; the total is then recomputed from the matrix.
+      // matrix; the total is then recomputed from the matrix by the database.
       if (it.size && it.color) {
         const variants = parseVariants(row.stock_variants)
         const k = variantKey(it.size, it.color)
@@ -1866,8 +1888,9 @@ function InventoryView({
               )
             })}
             <p className="admin__muted admin__small">
-              Vyberte velikost i barvu, pokud chcete naskladnit konkrétní variantu. Bez výběru
-              se kusy přičtou jen k celkovému stavu.
+              U produktů se skladem po velikostech a barvách vyberte velikost i barvu — kusy
+              se přičtou do dané kombinace. U ostatních nechte výběr prázdný a kusy se
+              přičtou k celkovému stavu.
             </p>
             <div className="admin__delivery-actions">
               <button
@@ -4105,7 +4128,8 @@ function ProductForm({
               </div>
               {rowsFor(i).length === 0 && (
                 <p className="admin__muted admin__small">
-                  Zatím nevyplněno — sklad se u této barvy nesleduje.
+                  Zatím nevyplněno. Pozor: jakmile je sklad rozepsaný u jiné barvy,
+                  tahle se na webu tváří jako vyprodaná.
                 </p>
               )}
               {rowsFor(i).map((line, x) => (

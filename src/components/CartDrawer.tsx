@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
 import { useProducts } from '../data/productsStore'
+import { variantQty } from '../lib/stock'
 import { CloseIcon, MinusIcon, PlusIcon, TrashIcon, ArrowIcon } from './icons'
 
 // 1 base currency unit = 24 Kč
@@ -136,14 +137,33 @@ export function CartDrawer() {
                               <MinusIcon />
                             </button>
                             <span>{item.quantity}</span>
-                            <button
-                              onClick={() =>
-                                updateQuantity(item.product.id, item.size, item.color, item.quantity + 1)
-                              }
-                              aria-label={c.increase}
-                            >
-                              <PlusIcon />
-                            </button>
+                            {(() => {
+                              // Never let the basket hold more than the shop has —
+                              // finding out at the payment step is a bad surprise.
+                              const left = item.product.isGiftCard
+                                ? null
+                                : (variantQty(item.product, item.size, item.color) ??
+                                  item.product.stockQty ??
+                                  null)
+                              const atMax = left != null && item.quantity >= left
+                              return (
+                                <button
+                                  disabled={atMax}
+                                  title={atMax ? `${left} ks skladem` : undefined}
+                                  onClick={() =>
+                                    updateQuantity(
+                                      item.product.id,
+                                      item.size,
+                                      item.color,
+                                      item.quantity + 1,
+                                    )
+                                  }
+                                  aria-label={c.increase}
+                                >
+                                  <PlusIcon />
+                                </button>
+                              )
+                            })()}
                           </div>
                           <span className="cart-item__price">
                             {formatPrice(item.product.price * item.quantity)}

@@ -16,7 +16,11 @@ alter table public.gift_cards
 
 create index if not exists gift_cards_order_idx on public.gift_cards (order_number);
 
--- 3) Poukazy nejsou skladová položka — vyřadíme je ze skladové logiky.
+-- 3) ZASTARALÉ — neplatná verze, ponechána jen kvůli historii.
+--    Skladovou logiku dnes instaluje supabase-stock-fix.sql. Tenhle blok
+--    NESPOUŠTĚJTE: obsahuje chybu, kvůli které se u produktu se skladem po
+--    variantách ztratil kus, když se kombinace v matici nenašla.
+/*
 create or replace function public.apply_order_stock(p_items jsonb, p_sign int)
 returns void
 language plpgsql
@@ -55,6 +59,7 @@ begin
   end loop;
 end
 $$;
+*/
 
 -- 4) Kontrola
 select id, name_cs, price_czk, is_gift_card
