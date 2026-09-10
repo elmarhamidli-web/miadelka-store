@@ -1,6 +1,6 @@
 // Order e-mails via Resend (https://resend.com). Fire-and-forget helpers —
 // e-mail failures must never break order placement or payment processing.
-import { czk2 } from './money.js'
+import { czk2, round2 } from './money.js'
 
 const FROM = process.env.EMAIL_FROM || 'Little One Store <objednavky@littleonestore.cz>'
 const NOTIFY = process.env.ORDER_NOTIFY_EMAIL || 'info@littleonestore.cz'
@@ -36,19 +36,40 @@ async function sendEmail({ to, subject, html, replyTo }) {
 const czk = (n) => `${Number(n).toLocaleString('cs-CZ')} Kč`
 
 function itemsTable(order) {
+  // Prices already contain VAT, so the net figure is derived by dividing.
+  const rate = Number(order.vat_rate) || 0
+  const div = 1 + rate / 100
+  const split = (gross) => {
+    const g = round2(gross)
+    const net = round2(g / div)
+    return { net, vat: round2(g - net) }
+  }
+
   const rows = (order.items || [])
-    .map(
-      (i) => `
+    .map((i) => {
+      const gross = round2(Number(i.price_czk) * Number(i.qty))
+      const { net, vat } = split(gross)
+      const variant = [i.color, i.size].filter(Boolean).join(' · ')
+      return `
       <tr>
         <td style="padding:10px 0;border-bottom:1px solid #f0e6ee;">
           <strong style="color:#3a2e3a;">${i.name_cs ?? i.name}</strong><br/>
-          <span style="color:#8b7d8b;font-size:13px;">${i.color} · ${i.size} · ${i.qty} ks</span>
+          <span style="color:#8b7d8b;font-size:13px;">${
+            variant ? `${variant} · ` : ''
+          }${i.qty} ks</span>
+          ${
+            rate > 0
+              ? `<br/><span style="color:#b3a6b3;font-size:12px;">bez DPH ${czk2(
+                  net,
+                )} · DPH ${rate} % ${czk2(vat)}</span>`
+              : ''
+          }
         </td>
         <td align="right" style="padding:10px 0;border-bottom:1px solid #f0e6ee;white-space:nowrap;color:#3a2e3a;">
-          ${czk(i.price_czk * i.qty)}
+          ${czk(gross)}
         </td>
-      </tr>`,
-    )
+      </tr>`
+    })
     .join('')
   const discountRow =
     Number(order.discount_czk) > 0
@@ -84,7 +105,16 @@ function itemsTable(order) {
       ${rows}
       ${discountRow}
       <tr>
-        <td style="padding:10px 0;color:#8b7d8b;">${shipLabel}</td>
+        <td style="padding:10px 0;color:#8b7d8b;">
+          ${shipLabel}
+          ${
+            rate > 0 && Number(order.shipping_czk) > 0
+              ? `<br/><span style="color:#b3a6b3;font-size:12px;">bez DPH ${czk2(
+                  split(order.shipping_czk).net,
+                )} · DPH ${rate} % ${czk2(split(order.shipping_czk).vat)}</span>`
+              : ''
+          }
+        </td>
         <td align="right" style="padding:10px 0;color:#8b7d8b;">${order.shipping_czk > 0 ? czk(order.shipping_czk) : 'Zdarma'}</td>
       </tr>
       ${pickupRow}

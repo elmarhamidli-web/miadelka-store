@@ -7,7 +7,7 @@
 // proforma is a plain document of ours — no payment link anywhere — and the
 // real Stripe faktura is issued only once the money has actually arrived.
 import { createHmac } from 'node:crypto'
-import { czk2, splitVat } from './money.js'
+import { czk2, round2 } from './money.js'
 
 const SITE = 'https://www.littleonestore.cz'
 
@@ -33,47 +33,63 @@ const esc = (s) =>
 export function proformaHtml(order, { vatRate = 21 } = {}) {
   const issued = new Date(order.created_at || Date.now())
   const items = Array.isArray(order.items) ? order.items : []
+  const div = 1 + (Number(vatRate) || 0) / 100
 
-  const rows = items
-    .map((it) => {
-      const label =
-        it.is_gift_card === true
-          ? `${esc(it.name_cs || it.name)} — dárkový poukaz${
-              it.size === 'physical' ? ' (poštou)' : ' (e-mailem)'
-            }`
-          : [it.name_cs || it.name, it.color, it.size].filter(Boolean).map(esc).join(' — ')
-      const qty = Math.max(1, Number(it.qty) || 1)
-      return `<tr>
-        <td>${label}</td>
-        <td class="num">${qty}</td>
-        <td class="num">${czk2(it.price_czk)}</td>
-        <td class="num">${czk2(Number(it.price_czk) * qty)}</td>
-      </tr>`
-    })
-    .join('')
+  /** Every money row is shown three ways: without VAT, the VAT itself, and
+   *  the gross amount the customer actually pays. Prices in the shop already
+   *  contain VAT, so the net figure is derived by dividing, never by adding. */
+  const line = (label, sub, qty, grossCzk, negative = false) => {
+    const gross = round2(grossCzk)
+    const net = round2(gross / div)
+    const vat = round2(gross - net)
+    const sign = negative ? '−' : ''
+    return {
+      net: negative ? -net : net,
+      vat: negative ? -vat : vat,
+      gross: negative ? -gross : gross,
+      html: `<tr${negative ? ' class="minus"' : ''}>
+        <td>${label}${sub ? `<div class="sub">${sub}</div>` : ''}</td>
+        <td class="num">${qty ?? ''}</td>
+        <td class="num">${sign}${czk2(net)}</td>
+        <td class="num">${sign}${czk2(vat)}</td>
+        <td class="num">${sign}${czk2(gross)}</td>
+      </tr>`,
+    }
+  }
 
-  const extra = []
+  const parts = []
+
+  for (const it of items) {
+    const label =
+      it.is_gift_card === true
+        ? `${esc(it.name_cs || it.name)} — dárkový poukaz${
+            it.size === 'physical' ? ' (poštou)' : ' (e-mailem)'
+          }`
+        : [it.name_cs || it.name, it.color, it.size].filter(Boolean).map(esc).join(' — ')
+    const qty = Math.max(1, Number(it.qty) || 1)
+    const unit = Number(it.price_czk) || 0
+    parts.push(line(label, `${czk2(unit)} / ks včetně DPH`, qty, unit * qty))
+  }
+
   if (Number(order.discount_czk) > 0) {
-    extra.push(
-      `<tr class="minus"><td colspan="3">Sleva ${esc(order.discount_code || '')}</td>
-       <td class="num">−${czk2(order.discount_czk)}</td></tr>`,
-    )
+    parts.push(line(`Sleva ${esc(order.discount_code || '')}`, '', '', order.discount_czk, true))
   }
   if (Number(order.shipping_czk) > 0) {
-    extra.push(
-      `<tr><td colspan="3">Doprava — ${esc(order.shipping_name || 'přeprava')}</td>
-       <td class="num">${czk2(order.shipping_czk)}</td></tr>`,
-    )
+    parts.push(line(`Doprava — ${esc(order.shipping_name || 'přeprava')}`, '', 1, order.shipping_czk))
   }
   if (Number(order.gift_card_czk) > 0) {
-    extra.push(
-      `<tr class="minus"><td colspan="3">Dárkový poukaz ${esc(order.gift_card_code || '')}</td>
-       <td class="num">−${czk2(order.gift_card_czk)}</td></tr>`,
+    parts.push(
+      line(`Dárkový poukaz ${esc(order.gift_card_code || '')}`, '', '', order.gift_card_czk, true),
     )
   }
 
-  const total = Number(order.total_czk) || 0
-  const { baseCzk, vatCzk } = splitVat(total, vatRate)
+  const rows = parts.map((p) => p.html).join('')
+
+  // The totals are the sum of the rows above, so the document always adds up
+  // exactly — no line where the columns and the footer disagree by a haléř.
+  const total = round2(parts.reduce((sum, p) => sum + p.gross, 0))
+  const baseCzk = round2(parts.reduce((sum, p) => sum + p.net, 0))
+  const vatCzk = round2(total - baseCzk)
 
   return `<!doctype html>
 <html lang="cs"><head><meta charset="utf-8"/>
@@ -100,6 +116,7 @@ export function proformaHtml(order, { vatRate = 21 } = {}) {
   td{padding:11px 0;border-bottom:1px solid #f2f0f3;vertical-align:top;}
   .num{text-align:right;white-space:nowrap;}
   .minus td{color:#15803d;}
+  .sub{color:#8b8391;font-size:12px;margin-top:2px;}
   .totals{margin-left:auto;width:min(100%,320px);}
   .totals tr td{border:0;padding:5px 0;}
   .totals .grand td{border-top:2px solid #2c2530;font-size:17px;font-weight:800;padding-top:10px;}
@@ -157,9 +174,15 @@ export function proformaHtml(order, { vatRate = 21 } = {}) {
 
   <table>
     <thead>
-      <tr><th>Popis</th><th class="num">Množství</th><th class="num">Cena</th><th class="num">Celkem</th></tr>
+      <tr>
+        <th>Popis</th>
+        <th class="num">Množství</th>
+        <th class="num">Bez DPH</th>
+        <th class="num">DPH ${vatRate} %</th>
+        <th class="num">Celkem</th>
+      </tr>
     </thead>
-    <tbody>${rows}${extra.join('')}</tbody>
+    <tbody>${rows}</tbody>
   </table>
 
   <table class="totals">
