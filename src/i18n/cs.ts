@@ -111,10 +111,12 @@ export const cs: Dictionary = {
     newsletter: {
       title: 'Přidejte se k rodině Little One Store',
       sub: 'Získejte 10% slevu na první objednávku a předběžný přístup k novinkám, tipům pro rodiče a pastelové inspiraci.',
+      heroTitle: 'Sleva 10 % na první nákup',
+      heroSub: 'Přihlaste se k newsletteru a kód vám pošleme e-mailem.',
       placeholder: 'vas@email.cz',
       cta: 'Získat 10% slevu',
       done: 'Přihlášeno ✓',
-      fine: 'Žádný spam, nikdy. Odhlásit se můžete kdykoli. Je to prototyp 🙂',
+      fine: 'Žádný spam, nikdy. Odhlásit se můžete kdykoli.',
       toast: 'Vítejte v rodině! Zkontrolujte schránku 💌',
     },
     shop: {

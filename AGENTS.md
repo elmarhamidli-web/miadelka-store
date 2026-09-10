@@ -47,3 +47,5 @@ Standard scripts live in `package.json`:
   it in `src/i18n/registry.ts` (`dictionaries` + `locales`). Each locale sets its own currency
   `symbol`/`rate` (prices are stored as base numbers and formatted via `formatPrice`), so a locale's
   prices follow its currency. Adding a key to `Dictionary` requires updating every locale file.
+
+## Imported Claude Cowork project instructions

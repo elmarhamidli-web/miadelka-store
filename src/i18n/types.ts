@@ -85,6 +85,8 @@ export interface Dictionary {
     newsletter: {
       title: string
       sub: string
+      heroTitle: string
+      heroSub: string
       placeholder: string
       cta: string
       done: string

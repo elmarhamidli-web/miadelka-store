@@ -383,7 +383,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
       </header>
 
       {view === 'settings' ? (
-        <SettingsView notify={notify} />
+        <SettingsView notify={notify} products={rows} />
       ) : view === 'orders' ? (
         <OrdersView notify={notify} />
       ) : view === 'inventory' ? (
@@ -3144,7 +3144,13 @@ function StatsView({ products }: { products: ProductRow[] }) {
 /* Settings                                                            */
 /* ------------------------------------------------------------------ */
 
-function SettingsView({ notify }: { notify: (m: string) => void }) {
+function SettingsView({
+  notify,
+  products,
+}: {
+  notify: (m: string) => void
+  products: ProductRow[]
+}) {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS)
   const [busy, setBusy] = useState(false)
 
@@ -3168,6 +3174,8 @@ function SettingsView({ notify }: { notify: (m: string) => void }) {
     setBusy(false)
   }
 
+  const heroPick = products.find((p) => p.id === settings.hero_product_id)
+
   return (
     <main className="admin__main">
       <div className="admin__card admin__card--narrow">
@@ -3190,6 +3198,56 @@ function SettingsView({ notify }: { notify: (m: string) => void }) {
         </label>
         <button className="admin__btn admin__btn--primary" onClick={() => void save()} disabled={busy}>
           Uložit nastavení
+        </button>
+      </div>
+
+      {/* -------- Hero product on the homepage -------- */}
+      <div className="admin__card admin__card--narrow" style={{ marginTop: 18 }}>
+        <h2>Hlavní stránka</h2>
+        <p className="admin__muted admin__small">
+          Produkt, který se ukáže ve velké kartě nahoře na úvodní stránce. Použije se jeho první
+          fotka, název a aktuální cena.
+        </p>
+        <label>
+          Produkt v hlavní kartě
+          <select
+            value={settings.hero_product_id ?? ''}
+            onChange={(e) =>
+              setSettings((s) => ({ ...s, hero_product_id: e.target.value || undefined }))
+            }
+          >
+            <option value="">— automaticky (první nejprodávanější) —</option>
+            {products
+              .filter((p) => !p.hidden)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name_cs ?? p.id}
+                </option>
+              ))}
+          </select>
+        </label>
+        {heroPick && (
+          <div className="admin__hero-preview">
+            <span className="admin__thumb" style={{ background: heroPick.gradient ?? '#eee' }}>
+              {heroPick.colors?.[0]?.images?.[0] ? (
+                <img src={heroPick.colors[0].images[0]} alt="" loading="lazy" />
+              ) : (
+                <span>{heroPick.emoji}</span>
+              )}
+            </span>
+            <div>
+              <strong>{heroPick.name_cs ?? heroPick.id}</strong>
+              <span className="admin__muted admin__small">{heroPick.price_czk} Kč</span>
+              {!heroPick.colors?.[0]?.images?.[0] && (
+                <span className="admin__small" style={{ color: '#b45309' }}>
+                  ⚠ Produkt nemá fotku — na úvodní stránce se ukáže jen emoji.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        <button className="admin__btn admin__btn--primary" onClick={() => void save()} disabled={busy}>
+          Uložit
         </button>
       </div>
     </main>

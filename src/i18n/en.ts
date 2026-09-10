@@ -111,10 +111,12 @@ export const en: Dictionary = {
     newsletter: {
       title: 'Join the Little One Store family',
       sub: 'Get 10% off your first order plus early access to new drops, parenting tips and pastel-perfect inspiration.',
+      heroTitle: '10% off your first order',
+      heroSub: 'Subscribe to the newsletter and we will e-mail you the code.',
       placeholder: 'you@email.com',
       cta: 'Get 10% off',
       done: 'Subscribed ✓',
-      fine: "No spam, ever. Unsubscribe anytime. It's a prototype 🙂",
+      fine: 'No spam, ever. Unsubscribe anytime.',
       toast: 'Welcome to the family! Check your inbox 💌',
     },
     shop: {

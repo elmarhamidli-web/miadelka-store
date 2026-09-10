@@ -1094,3 +1094,25 @@
   border-color: #a5b4fc;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
+
+/* ---- Hero product preview in Nastavení ---------------------------- */
+.admin__hero-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 16px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.admin__hero-preview > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.admin__hero-preview strong {
+  font-size: 0.92rem;
+  color: #0f172a;
+}

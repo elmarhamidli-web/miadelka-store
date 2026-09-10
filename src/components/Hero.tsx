@@ -1,12 +1,68 @@
 import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ArrowIcon } from './icons'
 import { useI18n } from '../i18n'
+import { useStore } from '../context/StoreContext'
 import { fadeUp, stagger } from '../lib/motion'
 import { useProducts } from '../data/productsStore'
 
 interface Props {
   onShop: () => void
   onExplore: () => void
+}
+
+/** Small, static "10 % off for subscribing" strip sitting under the hero card. */
+function HeroSubscribe() {
+  const { dict } = useI18n()
+  const { pushToast } = useStore()
+  const n = dict.ui.newsletter
+  const [email, setEmail] = useState('')
+  const [done, setDone] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email || busy) return
+    setBusy(true)
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      if (!res.ok) throw new Error('subscribe failed')
+      setDone(true)
+      pushToast(n.toast, '🎉')
+      setEmail('')
+      window.setTimeout(() => setDone(false), 3000)
+    } catch {
+      pushToast('Něco se nepovedlo — zkuste to prosím znovu.', '😔')
+    }
+    setBusy(false)
+  }
+
+  return (
+    <div className="hero__offer">
+      <div className="hero__offer-text">
+        <strong>🎁 {n.heroTitle}</strong>
+        <span>{n.heroSub}</span>
+      </div>
+      <form className="hero__offer-form" onSubmit={submit}>
+        <input
+          type="email"
+          required
+          placeholder={n.placeholder}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          aria-label={n.placeholder}
+        />
+        <button className="btn btn--primary" type="submit" disabled={busy}>
+          {busy ? '…' : done ? n.done : n.cta}
+        </button>
+      </form>
+    </div>
+  )
 }
 
 const floaters = [
@@ -19,11 +75,15 @@ const floaters = [
 
 export function Hero({ onShop, onExplore }: Props) {
   const { dict, formatPrice, productName } = useI18n()
+  const navigate = useNavigate()
   const h = dict.ui.hero
-  const { byId, bestSellers, products } = useProducts()
-  const pick = (id: string, index: number) =>
-    byId(id) ?? bestSellers[index] ?? products[index]
-  const heroMain = pick('bunny-3piece-set', 0)
+  const { byId, bestSellers, products, settings } = useProducts()
+  // The shop owner picks this product in the admin (Nastavení → Hlavní stránka).
+  // Falls back to the first bestseller, then to any product.
+  const heroMain =
+    (settings.hero_product_id ? byId(settings.hero_product_id) : undefined) ??
+    bestSellers[0] ??
+    products[0]
 
   return (
     <section className="hero" id="top">
@@ -99,10 +159,14 @@ export function Hero({ onShop, onExplore }: Props) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
         >
-          <motion.div
+          <div
             className="hero__card hero__card--main"
-            animate={{ y: [0, -14, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+            onClick={() => heroMain && navigate(`/product/${heroMain.id}`)}
+            role={heroMain ? 'link' : undefined}
+            tabIndex={heroMain ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && heroMain) navigate(`/product/${heroMain.id}`)
+            }}
           >
             {heroMain?.colors[0].images ? (
               <img
@@ -118,8 +182,10 @@ export function Hero({ onShop, onExplore }: Props) {
               <strong>{heroMain ? productName(heroMain.id, heroMain.name) : ''}</strong>
               <span>{heroMain ? formatPrice(heroMain.price) : ''}</span>
             </div>
-          </motion.div>
+          </div>
 
+          {/* Compact subscribe offer, anchored right under the card. */}
+          <HeroSubscribe />
         </motion.div>
       </div>
     </section>
