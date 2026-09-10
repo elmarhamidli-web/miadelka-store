@@ -3535,6 +3535,42 @@ function ProductForm({
   const set = <K extends keyof ProductRow>(key: K, value: ProductRow[K]) =>
     setR((prev) => ({ ...prev, [key]: value }))
 
+  /**
+   * The "Dárkové poukazy" category IS the voucher switch: picking it turns the
+   * form into a voucher form and clears everything a voucher has no use for.
+   */
+  const setCategory = (category: CategoryId) => {
+    const gift = category === 'gift-cards'
+    setR((prev) => ({
+      ...prev,
+      category,
+      is_gift_card: gift,
+      ...(gift
+        ? {
+            emoji: '🎁',
+            material_cs: null,
+            material_en: null,
+            material_uk: null,
+            colors: [
+              { ...(prev.colors[0] ?? { hex: '#f4b9c8', images: [] }), name: 'Poukaz' },
+            ],
+            sizes: [],
+            ages: [],
+            seasons: [],
+            badge: null,
+            featured: false,
+            best_seller: false,
+            seasonal: false,
+            is_new: false,
+            stock_qty: null,
+            stock_variants: {},
+            old_price_czk: null,
+          }
+        : {}),
+    }))
+    if (gift) setStockRows([[]])
+  }
+
   /* ---- stock per colour ------------------------------------------- */
   // Rows are kept per colour *index*, so renaming or reordering a colour
   // keeps its pieces with the right swatch.
@@ -3656,40 +3692,6 @@ function ProductForm({
         </div>
 
         {/* A voucher is a product too — same photos, but no sizes or stock. */}
-        <label className={`admin__giftswitch ${r.is_gift_card ? 'is-on' : ''}`}>
-          <input
-            type="checkbox"
-            checked={r.is_gift_card}
-            onChange={(e) => {
-              const on = e.target.checked
-              setR((prev) => ({
-                ...prev,
-                is_gift_card: on,
-                emoji: on ? '🎁' : prev.emoji,
-                material_cs: on ? null : prev.material_cs,
-                colors: on
-                  ? [{ ...(prev.colors[0] ?? { hex: '#f4b9c8', images: [] }), name: 'Poukaz' }]
-                  : prev.colors,
-                category: on ? 'gift-cards' : prev.category,
-                sizes: on ? [] : prev.sizes,
-                ages: on ? [] : prev.ages,
-                stock_qty: on ? null : prev.stock_qty,
-                stock_variants: on ? {} : prev.stock_variants,
-                old_price_czk: on ? null : prev.old_price_czk,
-              }))
-            }}
-          />
-          <span>
-            <strong>🎁 Tohle je dárkový poukaz</strong>
-            <small>
-              Cena níže je hodnota poukazu — částka je konečná, včetně DPH. Po zaplacení se
-              zákazníkovi automaticky vygeneruje kód na tuto částku a pošle se mu e-mailem.
-              Sklad se u poukazu nesleduje. Níže si vyberete, jestli se poukaz doručuje
-              e-mailem, poštou, nebo si zákazník zvolí sám.
-            </small>
-          </span>
-        </label>
-
         <h3>Základní údaje</h3>
         <div className="admin__grid">
           <label>
@@ -3698,7 +3700,7 @@ function ProductForm({
           </label>
           <label>
             Kategorie
-            <select value={r.category} onChange={(e) => set('category', e.target.value as CategoryId)}>
+            <select value={r.category} onChange={(e) => setCategory(e.target.value as CategoryId)}>
               {CATEGORIES.map((c) => (
                 <option key={c.id} value={c.id}>{c.label}</option>
               ))}
