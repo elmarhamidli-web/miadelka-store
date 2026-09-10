@@ -195,6 +195,7 @@ export const en: Dictionary = {
       vat: 'The amount shown is final, VAT included.',
       noShipping: 'The voucher arrives by e-mail — no shipping to pay.',
       cardOnly: 'Gift vouchers can only be paid by card online.',
+      codNote: 'We send the voucher code once the payment reaches us — with cash on delivery, after you receive the parcel.',
       emailNote: 'We will send the voucher code to the e-mail address in the order.',
       deliveryLabel: 'How should the voucher arrive?',
       byEmail: '✉️ By e-mail',

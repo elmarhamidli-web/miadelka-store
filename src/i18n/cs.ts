@@ -195,6 +195,7 @@ export const cs: Dictionary = {
       vat: 'Uvedená částka je konečná, včetně DPH.',
       noShipping: 'Poukaz posíláme e-mailem — neplatíte žádné poštovné.',
       cardOnly: 'Dárkový poukaz lze zaplatit pouze kartou online.',
+      codNote: 'Kód poukazu vám pošleme, jakmile přijmeme platbu — u dobírky po převzetí zásilky.',
       emailNote: 'Kód poukazu pošleme na e-mail uvedený v objednávce.',
       deliveryLabel: 'Jak chcete poukaz doručit?',
       byEmail: '✉️ E-mailem',

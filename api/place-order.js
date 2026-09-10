@@ -1,11 +1,12 @@
 // Places a cash-on-delivery / bank-transfer order server-side, with the same
 // price validation as the card flow, and sends confirmation e-mails.
 // Discount codes and gift cards are validated + redeemed here, server-side.
-import { sendOrderEmails } from './_lib/email.js'
+import { sendGiftCardEmail, sendOrderEmails } from './_lib/email.js'
 import {
   applyPromo,
   getActivePromotions,
   getShippingMethod,
+  issueGiftCards,
   promoPrice,
   redeemDiscount,
   redeemGiftCard,
@@ -71,26 +72,22 @@ export default async function handler(req, res) {
     for (const item of items) {
       const row = byId[item.id]
       const qty = Math.min(Math.max(parseInt(item.qty, 10) || 1, 1), 20)
-      // A voucher code must never leave before the money is in — card only.
-      // This covers printed vouchers too: the card is posted, but the value
-      // on it is money and must be paid up front.
-      if (row?.is_gift_card === true) {
-        res.status(400).json({ error: 'Gift vouchers require card payment' })
-        return
-      }
-      if (
-        !row ||
-        row.hidden ||
-        row.in_stock === false ||
-        (row.stock_qty != null && row.stock_qty <= 0)
-      ) {
+      const isGift = row?.is_gift_card === true
+      if (!row || row.hidden || row.in_stock === false) {
         res.status(400).json({ error: `Product unavailable: ${item.id}` })
         return
       }
-      // Stock split by size + colour: the exact variant must be available.
-      if (!variantAvailable(row, item.size, item.color, qty)) {
-        res.status(400).json({ error: `Variant unavailable: ${item.id}` })
-        return
+      // A voucher is generated on demand, so stock never applies to it.
+      if (!isGift) {
+        if (row.stock_qty != null && row.stock_qty <= 0) {
+          res.status(400).json({ error: `Product unavailable: ${item.id}` })
+          return
+        }
+        // Stock split by size + colour: the exact variant must be available.
+        if (!variantAvailable(row, item.size, item.color, qty)) {
+          res.status(400).json({ error: `Variant unavailable: ${item.id}` })
+          return
+        }
       }
       const priceCzk = promoPrice(row, activePromos)
       subtotalCzk += priceCzk * qty
@@ -98,23 +95,46 @@ export default async function handler(req, res) {
         id: row.id,
         name: row.name_en || row.name_cs,
         name_cs: row.name_cs,
-        size: String(item.size || '').slice(0, 30),
-        color: String(item.color || '').slice(0, 40),
+        size: isGift
+          ? ((row.gift_delivery === 'both'
+              ? ['online', 'physical']
+              : [row.gift_delivery || 'online']
+            ).includes(String(item.size || ''))
+              ? String(item.size)
+              : row.gift_delivery === 'physical'
+                ? 'physical'
+                : 'online')
+          : String(item.size || '').slice(0, 30),
+        color: isGift ? '' : String(item.color || '').slice(0, 40),
         qty,
         price_czk: priceCzk,
+        is_gift_card: isGift,
       })
     }
+
+    // Only a basket of e-mailed vouchers pays no postage — a printed voucher
+    // is a parcel like any other. Mirrors the card flow exactly.
+    const giftOnly =
+      orderItems.length > 0 &&
+      orderItems.every((i) => i.is_gift_card && i.size !== 'physical')
 
     const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
 
     // Shipping method + discounts — always validated against the DB.
-    const method = await getShippingMethod(shippingMethod)
+    const method = giftOnly ? null : await getShippingMethod(shippingMethod)
     if (method && method.kind === 'pickup' && !String(pickupPointName || '').trim()) {
       res.status(400).json({ error: 'Pickup point required' })
       return
     }
-    const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode, method })
+    const promo = await applyPromo({
+      subtotalCzk,
+      shippingCfg,
+      discountCode,
+      giftCode,
+      method,
+      freeShipping: giftOnly,
+    })
     const paidByGift = promo.totalCzk === 0
 
     // Prices are VAT-inclusive, so the tax sits inside whatever remains after
@@ -185,6 +205,17 @@ export default async function handler(req, res) {
       }
     }
 
+    // Vouchers bought on delivery: the codes are written to the database now
+    // (so nothing is lost and the printed card can be prepared) but stay
+    // INACTIVE — unusable and unsent — until the money arrives. A voucher
+    // covered by another voucher is already paid, so it goes live at once.
+    const paidOrder = { ...orderPayload, order_number: orderNumber }
+    try {
+      await issueGiftCards(paidOrder, { active: paidByGift })
+    } catch (err) {
+      console.error(`Gift voucher issue failed for order #${orderNumber}:`, err)
+    }
+
     // Cash on delivery / bank transfer never touches Stripe Checkout, so the
     // faktura is issued here — before the e-mails, so the customer gets the
     // PDF link in the confirmation. A failure must never lose the order.
@@ -192,23 +223,30 @@ export default async function handler(req, res) {
     try {
       const { issueInvoiceForOrder } = await import('./create-invoice.js')
       invoice = await issueInvoiceForOrder(
-        { ...orderPayload, order_number: orderNumber, status: paidByGift ? 'paid' : 'new' },
+        { ...paidOrder, status: paidByGift ? 'paid' : 'new' },
         { vatRate },
       )
     } catch (err) {
       console.error(`Invoice for order #${orderNumber} failed:`, err)
     }
 
-    await sendOrderEmails(
-      {
-        ...orderPayload,
-        order_number: orderNumber,
-        invoice_url: invoice.invoiceUrl ?? null,
-        invoice_pdf: invoice.invoicePdf ?? null,
-        invoice_status: invoice.invoiceStatus ?? null,
-      },
-      paidByGift,
-    )
+    const mailOrder = {
+      ...paidOrder,
+      invoice_url: invoice.invoiceUrl ?? null,
+      invoice_pdf: invoice.invoicePdf ?? null,
+      invoice_status: invoice.invoiceStatus ?? null,
+    }
+    await sendOrderEmails(mailOrder, paidByGift)
+
+    // An order already settled by another voucher gets its codes right away.
+    if (paidByGift) {
+      try {
+        const cards = await issueGiftCards(paidOrder, { active: true })
+        if (cards.length > 0) await sendGiftCardEmail(mailOrder, cards)
+      } catch (err) {
+        console.error(`Gift voucher e-mail failed for order #${orderNumber}:`, err)
+      }
+    }
 
     res.status(200).json({ orderNumber, paidByGift })
   } catch (err) {

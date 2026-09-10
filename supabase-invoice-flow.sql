@@ -21,6 +21,11 @@ update public.orders
    and (invoice_pdf is not null or invoice_url is not null)
    and status in ('paid', 'shipped', 'done');
 
+-- Poukaz si pamatuje, jak se doručuje: kód tištěného poukazu se neposílá
+-- e-mailem, je vytištěný na kartičce.
+alter table public.gift_cards
+  add column if not exists delivery text not null default 'online';
+
 -- Kontrola
 select order_number, status, payment_method, invoice_status, invoice_sent_at
   from public.orders

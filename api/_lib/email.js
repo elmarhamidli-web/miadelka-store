@@ -500,15 +500,18 @@ export function giftCardEmailHtml(order, cards) {
  * Sent only after the payment really went through.
  */
 export async function sendGiftCardEmail(order, cards) {
-  if (!cards || cards.length === 0) return
+  // Printed vouchers arrive by post with the code on the card, so mailing the
+  // code would give the buyer two usable copies of the same money.
+  const online = (cards || []).filter((c) => c.delivery !== 'physical')
+  if (online.length === 0) return
   await sendEmail({
     to: order.email,
     replyTo: NOTIFY,
     subject:
-      cards.length === 1
-        ? `Váš dárkový poukaz na ${Number(cards[0].valueCzk).toLocaleString('cs-CZ')} Kč 🎁`
-        : `Vaše dárkové poukazy (${cards.length}×) 🎁`,
-    html: giftCardEmailHtml(order, cards),
+      online.length === 1
+        ? `Váš dárkový poukaz na ${Number(online[0].valueCzk).toLocaleString('cs-CZ')} Kč 🎁`
+        : `Vaše dárkové poukazy (${online.length}×) 🎁`,
+    html: giftCardEmailHtml(order, online),
   })
 }
 

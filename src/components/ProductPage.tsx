@@ -263,8 +263,8 @@ export function ProductPage() {
                   )}
                   <ul>
                     {giftMode === 'online' && <li>{g.noShipping}</li>}
-                    <li>{g.emailNote}</li>
-                    <li>{g.cardOnly}</li>
+                    <li>{giftMode === 'physical' ? g.byPostNote : g.emailNote}</li>
+                    <li>{g.codNote}</li>
                   </ul>
                 </div>
               )}

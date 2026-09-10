@@ -620,9 +620,15 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
   ) => {
     setInvoicing(orderNumber)
     try {
+      // The endpoint activates gift vouchers, so it requires an admin session.
+      const { data: sess } = await supabase!.auth.getSession()
+      const token = sess.session?.access_token
       const res = await fetch('/api/create-invoice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ orderNumber, action }),
       })
       const data = await res.json()

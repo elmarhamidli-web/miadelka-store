@@ -261,9 +261,13 @@ function randomGiftCode() {
  * than minting new money. Throws when a code cannot be created — the caller
  * must fail loudly so the delivery is retried.
  *
+ * `active: false` writes the codes to the database but keeps them unusable —
+ * that is how a cash-on-delivery voucher works: the code exists from the
+ * start, but it cannot be spent (and is not e-mailed) until the money is in.
+ *
  * Returns [{ code, valueCzk }] — safe to show to the buyer.
  */
-export async function issueGiftCards(order) {
+export async function issueGiftCards(order, { active = true } = {}) {
   const items = Array.isArray(order?.items) ? order.items : []
   const wanted = []
   for (const item of items) {
@@ -271,7 +275,8 @@ export async function issueGiftCards(order) {
     const value = Math.round(Number(item.price_czk) || 0)
     const qty = Math.min(Math.max(parseInt(item.qty, 10) || 1, 1), 20)
     if (!(value > 0)) continue
-    for (let i = 0; i < qty; i++) wanted.push(value)
+    const delivery = item.size === 'physical' ? 'physical' : 'online'
+    for (let i = 0; i < qty; i++) wanted.push({ value, delivery })
   }
   if (wanted.length === 0) return []
 
@@ -285,18 +290,25 @@ export async function issueGiftCards(order) {
     // vouchers for an order is real money given away twice.
     const existing =
       (await sb(
-        `gift_cards?order_number=eq.${encodeURIComponent(orderNumber)}&select=code,initial_czk`,
+        `gift_cards?order_number=eq.${encodeURIComponent(
+          orderNumber,
+        )}&select=code,initial_czk,delivery`,
       )) || []
     for (const row of existing) {
       const value = Math.round(Number(row.initial_czk))
-      const idx = remaining.indexOf(value)
+      const idx = remaining.findIndex((w) => w.value === value)
       if (idx === -1) continue
       remaining.splice(idx, 1)
-      issued.push({ code: row.code, valueCzk: value })
+      issued.push({
+        code: row.code,
+        valueCzk: value,
+        delivery: row.delivery === 'physical' ? 'physical' : 'online',
+      })
     }
   }
 
-  for (const value of remaining) {
+  for (const want of remaining) {
+    const { value, delivery } = want
     let created = false
     let lastErr = null
     // Retry only when the random code happens to be taken already.
@@ -310,14 +322,17 @@ export async function issueGiftCards(order) {
             code,
             initial_czk: value,
             balance_czk: value,
-            active: true,
+            active,
+            delivery,
             order_number: orderNumber,
             recipient_email: order?.email ?? null,
             sold_at: new Date().toISOString(),
-            note: `Prodáno — objednávka #${orderNumber ?? '?'}`,
+            note: active
+              ? `Prodáno — objednávka #${orderNumber ?? '?'}`
+              : `Prodáno — objednávka #${orderNumber ?? '?'} · čeká na úhradu`,
           }),
         })
-        issued.push({ code, valueCzk: value })
+        issued.push({ code, valueCzk: value, delivery })
         created = true
       } catch (err) {
         lastErr = err
@@ -329,4 +344,37 @@ export async function issueGiftCards(order) {
     if (!created) throw lastErr || new Error('Gift voucher could not be created')
   }
   return issued
+}
+
+/**
+ * Switches the vouchers of an order on once the money has arrived, and hands
+ * them back so the buyer can finally be e-mailed the codes.
+ * Returns [{ code, valueCzk }] — empty when the order has no vouchers.
+ */
+export async function activateGiftCardsForOrder(orderNumber) {
+  if (orderNumber == null) return []
+  const rows =
+    (await sb(
+      `gift_cards?order_number=eq.${encodeURIComponent(
+        orderNumber,
+      )}&select=code,initial_czk,active,delivery`,
+    )) || []
+  if (rows.length === 0) return []
+
+  const pending = rows.filter((r) => r.active !== true)
+  if (pending.length > 0) {
+    await sb(`gift_cards?order_number=eq.${encodeURIComponent(orderNumber)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        active: true,
+        note: `Prodáno — objednávka #${orderNumber} · uhrazeno`,
+      }),
+    })
+  }
+  return rows.map((r) => ({
+    code: r.code,
+    valueCzk: Math.round(Number(r.initial_czk)),
+    delivery: r.delivery === 'physical' ? 'physical' : 'online',
+  }))
 }

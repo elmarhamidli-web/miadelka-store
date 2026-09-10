@@ -12,9 +12,26 @@
 // Card orders never reach this file: Stripe Checkout already issues a paid
 // invoice for them, and the webhook mails it with the confirmation.
 import Stripe from 'stripe'
-import { sendInvoiceEmail } from './_lib/email.js'
+import { sendGiftCardEmail, sendInvoiceEmail } from './_lib/email.js'
+import { activateGiftCardsForOrder } from './_lib/promo.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY || 'sb_publishable_Uco7Zh8nx_pMXpJMHOeKOA_dNgaCxjO'
+
+/** Verify the bearer token belongs to a signed-in Supabase user (the admin). */
+async function verifyUser(token) {
+  if (!token) return null
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2026-06-24.dahlia',
@@ -350,6 +367,15 @@ export default async function handler(req, res) {
     return
   }
   try {
+    // Settling an order activates its gift vouchers — real money. Only a
+    // signed-in admin may reach any action here.
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+    const user = await verifyUser(token)
+    if (!user?.id) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
     const { orderNumber } = req.body || {}
     if (!orderNumber) {
       res.status(400).json({ error: 'orderNumber required' })
@@ -391,9 +417,30 @@ export default async function handler(req, res) {
         return
       }
       const merged = { ...current, ...toOrderFields(done) }
+      // The money is in — the order is no longer merely "new".
+      if (current.status === 'new') {
+        try {
+          await sb(`orders?order_number=eq.${encodeURIComponent(orderNumber)}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=minimal' },
+            body: JSON.stringify({ status: 'paid' }),
+          })
+          merged.status = 'paid'
+        } catch (err) {
+          console.error('Order status update failed:', err)
+        }
+      }
       if (req.body.send !== false) {
         await sendInvoiceEmail(merged, { proforma: false })
         await markSent(orderNumber)
+        // Vouchers bought on delivery have been sitting inactive in the
+        // database. The money is in — switch them on and send the codes.
+        try {
+          const cards = await activateGiftCardsForOrder(orderNumber)
+          if (cards.length > 0) await sendGiftCardEmail(merged, cards)
+        } catch (err) {
+          console.error(`Gift voucher activation failed for #${orderNumber}:`, err)
+        }
       }
       res.status(200).json({
         invoiceUrl: merged.invoice_url,

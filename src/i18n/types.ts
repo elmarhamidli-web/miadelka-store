@@ -163,6 +163,7 @@ export interface Dictionary {
       vat: string
       noShipping: string
       cardOnly: string
+      codNote: string
       emailNote: string
       deliveryLabel: string
       byEmail: string

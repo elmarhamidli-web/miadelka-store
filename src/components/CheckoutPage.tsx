@@ -83,8 +83,6 @@ export function CheckoutPage() {
 
   // Only a basket of e-mailed vouchers skips the carrier entirely: no
   // postage, no pickup point. A printed voucher is a parcel like any other.
-  // Card payment stays mandatory whenever a voucher is involved — a code must
-  // never leave before it is paid for.
   const giftOnly = isEmailOnlyBasket(cart)
   const hasGift = cart.some((i) => i.product.isGiftCard === true)
 
@@ -108,12 +106,11 @@ export function CheckoutPage() {
   const shippingFree = shippingCzk === 0
   const total = Math.max(0, subtotal - discountAmt + shipping - giftAmt)
 
-  // Cash on delivery may be disabled for a specific method — and is never
-  // possible when the basket contains a gift voucher.
+  // Cash on delivery may still be disabled for a specific shipping method.
   useEffect(() => {
     if (payment !== 'cod') return
-    if (hasGift || (method && !method.cod_allowed)) setPayment('card')
-  }, [method, payment, hasGift])
+    if (method && !method.cod_allowed) setPayment('card')
+  }, [method, payment])
 
   const choosePoint = async () => {
     if (!method) return
@@ -482,19 +479,19 @@ export function CheckoutPage() {
               </label>
               <label
                 className={`checkout__pay ${payment === 'cod' ? 'is-active' : ''} ${
-                  hasGift || (method && !method.cod_allowed) ? 'is-disabled' : ''
+                  method && !method.cod_allowed ? 'is-disabled' : ''
                 }`}
               >
                 <input
                   type="radio"
                   name="payment"
-                  disabled={hasGift || Boolean(method && !method.cod_allowed)}
+                  disabled={Boolean(method && !method.cod_allowed)}
                   checked={payment === 'cod'}
                   onChange={() => setPayment('cod')}
                 />
                 <div>
                   <strong>{c.cod}</strong>
-                  <span>{hasGift ? dict.ui.gift.cardOnly : c.codNote}</span>
+                  <span>{hasGift ? dict.ui.gift.codNote : c.codNote}</span>
                 </div>
               </label>
             </div>

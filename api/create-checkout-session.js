@@ -412,7 +412,18 @@ export default async function handler(req, res) {
           body: JSON.stringify({ status: 'paid', payment_ref: 'gift_card' }),
         }).catch(() => undefined)
       }
-      const paidOrder = { ...orderPayload, order_number: orderNumber }
+      const paidOrder = { ...orderPayload, order_number: orderNumber, status: 'paid' }
+      // Nothing goes through Stripe Checkout here, so issue the faktura the
+      // same way the cash-on-delivery flow does.
+      try {
+        const { issueInvoiceForOrder } = await import('./create-invoice.js')
+        const inv = await issueInvoiceForOrder(paidOrder, { vatRate })
+        paidOrder.invoice_url = inv.invoiceUrl ?? null
+        paidOrder.invoice_pdf = inv.invoicePdf ?? null
+        paidOrder.invoice_status = inv.invoiceStatus ?? null
+      } catch (err) {
+        console.error(`Invoice for order #${orderNumber} failed:`, err)
+      }
       await sendOrderEmails(paidOrder, true)
       // Vouchers bought with another voucher: the order is already paid, so
       // the codes have to be issued here. Tell the owner loudly if it fails —
