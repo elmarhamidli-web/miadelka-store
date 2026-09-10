@@ -50,6 +50,8 @@ export interface ProductRow {
   stock_variants: Record<string, number> | null
   /** Dárkový poukaz: cena produktu je hodnota poukazu včetně DPH. */
   is_gift_card: boolean
+  /** Jak se poukaz doručuje: e-mailem, poštou, nebo si zákazník vybere. */
+  gift_delivery: 'online' | 'physical' | 'both'
   seasons: string[]
 }
 
@@ -64,6 +66,8 @@ export interface SiteSettings {
   vat_payer?: boolean
   /** DPH rate in percent (Czech standard rate is 21). */
   vat_rate?: number
+  /** Where customers collect an "osobní odběr" order. */
+  pickup_address?: string
 }
 
 export interface Promotion {
@@ -169,6 +173,7 @@ function rowToProduct(row: ProductRow, promos: Promotion[] = []): Product {
     stockQty: row.stock_qty,
     stockVariants: parseVariants(row.stock_variants),
     isGiftCard: row.is_gift_card === true,
+    giftDelivery: row.gift_delivery ?? 'online',
   }
 }
 
@@ -231,6 +236,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           hero_product_id: (s as { hero_product_id?: string }).hero_product_id || undefined,
           vat_payer: (s as { vat_payer?: boolean }).vat_payer !== false,
           vat_rate: Number((s as { vat_rate?: number }).vat_rate ?? 21),
+          pickup_address: (s as { pickup_address?: string }).pickup_address || undefined,
         })
       }
     }

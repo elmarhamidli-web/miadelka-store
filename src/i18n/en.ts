@@ -196,6 +196,12 @@ export const en: Dictionary = {
       noShipping: 'The voucher arrives by e-mail — no shipping to pay.',
       cardOnly: 'Gift vouchers can only be paid by card online.',
       emailNote: 'We will send the voucher code to the e-mail address in the order.',
+      deliveryLabel: 'How should the voucher arrive?',
+      byEmail: '✉️ By e-mail',
+      byEmailNote: 'The code arrives right after payment — no postage.',
+      byPost: '📮 By post',
+      byPostNote: 'We send a printed voucher as a normal parcel.',
+      personalPickup: 'Personal collection — pick the order up at our place.',
     },
     checkout: {
       title: 'Checkout',

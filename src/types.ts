@@ -50,6 +50,8 @@ export interface Product {
   stockVariants?: Record<string, number> | null
   /** Gift voucher sold like a product; price is the voucher value incl. VAT. */
   isGiftCard?: boolean
+  /** How the voucher reaches the buyer — 'both' lets them choose. */
+  giftDelivery?: 'online' | 'physical' | 'both'
 }
 
 export interface CartItem {

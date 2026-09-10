@@ -114,12 +114,16 @@ export function CartDrawer() {
                       <div className="cart-item__info">
                         <strong>{productName(item.product.id, item.product.name)}</strong>
                         <span className="cart-item__variant">
-                          {[
-                            item.color && colorName(item.color),
-                            item.size && `${c.sizeLabel} ${item.size}`,
-                          ]
-                            .filter(Boolean)
-                            .join(' · ') || '🎁'}
+                          {item.product.isGiftCard
+                            ? item.size === 'physical'
+                              ? dict.ui.gift.byPost
+                              : dict.ui.gift.byEmail
+                            : [
+                                item.color && colorName(item.color),
+                                item.size && `${c.sizeLabel} ${item.size}`,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
                         </span>
                         <div className="cart-item__row">
                           <div className="qty">

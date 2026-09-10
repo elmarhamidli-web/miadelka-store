@@ -72,6 +72,7 @@ const emptyRow = (): ProductRow => ({
   stock_qty: null,
   stock_variants: {},
   is_gift_card: false,
+  gift_delivery: 'online',
   seasons: [],
 })
 
@@ -589,6 +590,7 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
   const [fulfillId, setFulfillId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'active' | 'pending' | 'cancelled' | 'all'>('active')
   const [loading, setLoading] = useState(true)
+  const [invoicing, setInvoicing] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     const { data, error } = await supabase!
@@ -604,11 +606,45 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
     void load()
   }, [load])
 
+  /** Issues a Stripe faktura for an order that was not paid by card. */
+  const makeInvoice = async (orderNumber: number) => {
+    setInvoicing(orderNumber)
+    try {
+      const res = await fetch('/api/create-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Nepodařilo se vystavit fakturu.')
+      setOrders((os) =>
+        os.map((o) =>
+          o.order_number === orderNumber
+            ? { ...o, invoice_url: data.invoiceUrl, invoice_pdf: data.invoicePdf }
+            : o,
+        ),
+      )
+      notify('Faktura vystavena ✓')
+    } catch (err) {
+      notify('Chyba: ' + (err instanceof Error ? err.message : 'faktura'))
+    }
+    setInvoicing(null)
+  }
+
   const setStatus = async (id: string, status: string) => {
     const { error } = await supabase!.from('orders').update({ status }).eq('id', id)
     if (error) notify('Chyba: ' + error.message)
     else {
       setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)))
+      // Money for a dobírka order has arrived → mark its faktura as uhrazená.
+      const row = orders.find((o) => o.id === id)
+      if (row && ['paid', 'shipped', 'done'].includes(status)) {
+        void fetch('/api/create-invoice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderNumber: row.order_number, settle: true }),
+        }).catch(() => undefined)
+      }
       notify('Stav objednávky uložen ✓')
     }
   }
@@ -840,8 +876,8 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                       </span>
                     )}
                   </p>
-                  {(o.invoice_pdf || o.invoice_url) && (
-                    <p>
+                  <p>
+                    {o.invoice_pdf || o.invoice_url ? (
                       <a
                         className="admin__btn"
                         href={o.invoice_pdf || o.invoice_url || '#'}
@@ -850,8 +886,20 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                       >
                         📄 Faktura (PDF)
                       </a>
-                    </p>
-                  )}
+                    ) : ['new', 'paid', 'shipped', 'done'].includes(o.status) ? (
+                      <button
+                        className="admin__btn"
+                        disabled={invoicing === o.order_number}
+                        onClick={() => void makeInvoice(o.order_number)}
+                      >
+                        {invoicing === o.order_number ? 'Vystavuji…' : '🧾 Vystavit fakturu'}
+                      </button>
+                    ) : (
+                      <span className="admin__muted admin__small">
+                        Faktura se vystaví, jakmile bude objednávka potvrzená.
+                      </span>
+                    )}
+                  </p>
                   {o.tracking_number && (
                     <div className="admin__tracking-info">
                       <h4>Doprava</h4>
@@ -1073,7 +1121,7 @@ interface ShippingRow {
   note_cs: string | null
   price_czk: number
   free_over_czk: number | null
-  kind: 'address' | 'pickup'
+  kind: 'address' | 'pickup' | 'personal'
   carrier: string | null
   cod_allowed: boolean
   active: boolean
@@ -1094,13 +1142,14 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
   const [loading, setLoading] = useState(true)
   const [edited, setEdited] = useState<Record<string, Partial<ShippingRow>>>({})
   const [packetaKey, setPacketaKey] = useState('')
+  const [pickupAddress, setPickupAddress] = useState('')
   const [savingKey, setSavingKey] = useState(false)
 
   // New method form
   const [nName, setNName] = useState('')
   const [nPrice, setNPrice] = useState('90')
   const [nFree, setNFree] = useState('2000')
-  const [nKind, setNKind] = useState<'address' | 'pickup'>('address')
+  const [nKind, setNKind] = useState<'address' | 'pickup' | 'personal'>('address')
   const [nCarrier, setNCarrier] = useState('zasilkovna')
 
   const load = useCallback(async () => {
@@ -1109,8 +1158,9 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
       supabase!.from('site_settings').select('value').eq('key', 'shipping').maybeSingle(),
     ])
     if (m.data) setRows(m.data as ShippingRow[])
-    const cfg = (s.data?.value ?? {}) as { packeta_api_key?: string }
+    const cfg = (s.data?.value ?? {}) as { packeta_api_key?: string; pickup_address?: string }
     setPacketaKey(cfg.packeta_api_key ?? '')
+    setPickupAddress(cfg.pickup_address ?? '')
     setLoading(false)
   }, [])
 
@@ -1160,16 +1210,18 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
       notify('Zadejte název dopravy.')
       return
     }
-    const code = `${nCarrier}-${nKind}-${Date.now().toString(36).slice(-4)}`
+    // Personal collection has no carrier at all.
+    const personal = nKind === 'personal'
+    const code = `${personal ? 'osobni' : nCarrier}-${nKind}-${Date.now().toString(36).slice(-4)}`
     const { data, error } = await supabase!
       .from('shipping_methods')
       .insert({
         code,
         name_cs: nName.trim(),
-        price_czk: Number(nPrice) || 0,
-        free_over_czk: nFree.trim() === '' ? null : Number(nFree),
+        price_czk: personal ? 0 : Number(nPrice) || 0,
+        free_over_czk: personal ? 0 : nFree.trim() === '' ? null : Number(nFree),
         kind: nKind,
-        carrier: nCarrier,
+        carrier: personal ? null : nCarrier,
         sort: (rows[rows.length - 1]?.sort ?? 0) + 10,
       })
       .select()
@@ -1193,9 +1245,16 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
     const cur = (data?.value ?? {}) as Record<string, unknown>
     const { error } = await supabase!
       .from('site_settings')
-      .upsert({ key: 'shipping', value: { ...cur, packeta_api_key: packetaKey.trim() || null } })
+      .upsert({
+        key: 'shipping',
+        value: {
+          ...cur,
+          packeta_api_key: packetaKey.trim() || null,
+          pickup_address: pickupAddress.trim() || null,
+        },
+      })
     setSavingKey(false)
-    notify(error ? 'Chyba: ' + error.message : 'Klíč uložen ✓')
+    notify(error ? 'Chyba: ' + error.message : 'Uloženo ✓')
   }
 
   if (loading)
@@ -1241,7 +1300,9 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
                       onChange={(ev) => patch(r.id, { name_cs: ev.target.value })}
                     />
                     <div className="admin__muted admin__small">
-                      {CARRIER_LABELS[r.carrier ?? 'other'] ?? r.carrier}
+                      {r.kind === 'personal'
+                        ? '—'
+                        : CARRIER_LABELS[r.carrier ?? 'other'] ?? r.carrier}
                     </div>
                   </td>
                   <td>
@@ -1268,7 +1329,11 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
                     />
                   </td>
                   <td className="admin__small">
-                    {r.kind === 'pickup' ? '📍 Výdejní místo' : '🏠 Na adresu'}
+                    {r.kind === 'pickup'
+                      ? '📍 Výdejní místo'
+                      : r.kind === 'personal'
+                        ? '🏪 Osobní odběr'
+                        : '🏠 Na adresu'}
                   </td>
                   <td>
                     <label className="admin__switch">
@@ -1310,31 +1375,59 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
               <input value={nName} onChange={(e) => setNName(e.target.value)} placeholder="DPD — na adresu" />
             </label>
             <label>
-              Přepravce
-              <select value={nCarrier} onChange={(e) => setNCarrier(e.target.value)}>
-                {Object.entries(CARRIER_LABELS).map(([id, label]) => (
-                  <option key={id} value={id}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
               Typ
-              <select value={nKind} onChange={(e) => setNKind(e.target.value as 'address' | 'pickup')}>
+              <select
+                value={nKind}
+                onChange={(e) => {
+                  const k = e.target.value as 'address' | 'pickup' | 'personal'
+                  setNKind(k)
+                  if (k === 'personal') {
+                    setNPrice('0')
+                    setNFree('0')
+                    if (!nName.trim()) setNName('Osobní odběr')
+                  }
+                }}
+              >
                 <option value="address">Na adresu</option>
                 <option value="pickup">Výdejní místo</option>
+                <option value="personal">Osobní odběr (u nás)</option>
               </select>
             </label>
+            {nKind !== 'personal' && (
+              <label>
+                Přepravce
+                <select value={nCarrier} onChange={(e) => setNCarrier(e.target.value)}>
+                  {Object.entries(CARRIER_LABELS).map(([id, label]) => (
+                    <option key={id} value={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label>
               Cena (Kč)
-              <input type="number" min="0" value={nPrice} onChange={(e) => setNPrice(e.target.value)} />
+              <input
+                type="number"
+                min="0"
+                value={nKind === 'personal' ? '0' : nPrice}
+                disabled={nKind === 'personal'}
+                onChange={(e) => setNPrice(e.target.value)}
+              />
             </label>
-            <label>
-              Zdarma od (Kč)
-              <input type="number" min="0" value={nFree} onChange={(e) => setNFree(e.target.value)} placeholder="nikdy" />
-            </label>
+            {nKind !== 'personal' && (
+              <label>
+                Zdarma od (Kč)
+                <input type="number" min="0" value={nFree} onChange={(e) => setNFree(e.target.value)} placeholder="nikdy" />
+              </label>
+            )}
           </div>
+          {nKind === 'personal' && (
+            <p className="admin__muted admin__small">
+              Zákazník si objednávku vyzvedne osobně — neplatí dopravu a nevybírá výdejní místo.
+              Adresu výdeje vyplňte níže, ukáže se mu v pokladně při výběru dopravy.
+            </p>
+          )}
           <button className="admin__btn admin__btn--primary">+ Přidat</button>
         </form>
       </div>
@@ -1347,6 +1440,14 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
           veřejná mapa a název pobočky vypíše ručně — objednávka funguje v obou případech.
         </p>
         <div className="admin__promo-grid">
+          <label>
+            Adresa pro osobní odběr
+            <input
+              value={pickupAddress}
+              onChange={(e) => setPickupAddress(e.target.value)}
+              placeholder="Hviezdoslavova 545/41, 627 00 Brno — po domluvě"
+            />
+          </label>
           <label>
             Packeta API klíč
             <input
@@ -3564,6 +3665,11 @@ function ProductForm({
               setR((prev) => ({
                 ...prev,
                 is_gift_card: on,
+                emoji: on ? '🎁' : prev.emoji,
+                material_cs: on ? null : prev.material_cs,
+                colors: on
+                  ? [{ ...(prev.colors[0] ?? { hex: '#f4b9c8', images: [] }), name: 'Poukaz' }]
+                  : prev.colors,
                 category: on ? 'gift-cards' : prev.category,
                 sizes: on ? [] : prev.sizes,
                 ages: on ? [] : prev.ages,
@@ -3578,7 +3684,8 @@ function ProductForm({
             <small>
               Cena níže je hodnota poukazu — částka je konečná, včetně DPH. Po zaplacení se
               zákazníkovi automaticky vygeneruje kód na tuto částku a pošle se mu e-mailem.
-              Poukaz se neposílá poštou a nesleduje se u něj sklad.
+              Sklad se u poukazu nesleduje. Níže si vyberete, jestli se poukaz doručuje
+              e-mailem, poštou, nebo si zákazník zvolí sám.
             </small>
           </span>
         </label>
@@ -3597,6 +3704,21 @@ function ProductForm({
               ))}
             </select>
           </label>
+          {r.is_gift_card && (
+            <label>
+              Způsob doručení poukazu
+              <select
+                value={r.gift_delivery}
+                onChange={(e) =>
+                  set('gift_delivery', e.target.value as 'online' | 'physical' | 'both')
+                }
+              >
+                <option value="online">Pouze e-mailem</option>
+                <option value="physical">Pouze poštou (tištěný poukaz)</option>
+                <option value="both">E-mailem i poštou — vybere si zákazník</option>
+              </select>
+            </label>
+          )}
           <label>
             {r.is_gift_card ? 'Hodnota poukazu (Kč, včetně DPH) *' : 'Cena (Kč) *'}
             <input
@@ -3637,47 +3759,56 @@ function ProductForm({
               />
             </label>
           )}
-          <label>
-            Štítek
-            <select value={r.badge ?? ''} onChange={(e) => set('badge', e.target.value || null)}>
-              <option value="">— žádný —</option>
-              <option value="New">Novinka</option>
-              <option value="Bestseller">Nejprodávanější</option>
-            </select>
-          </label>
-          <label>
-            Emoji (záložní obrázek)
-            <input value={r.emoji} onChange={(e) => set('emoji', e.target.value)} />
-          </label>
-          <label>
-            Barva pozadí karty
-            <select
-              value={r.gradient ?? ''}
-              onChange={(e) => set('gradient', e.target.value)}
-            >
-              {Object.entries(GRADIENTS).map(([name, g]) => (
-                <option key={name} value={g}>{name}</option>
-              ))}
-            </select>
-          </label>
+          {!r.is_gift_card && (
+            <label>
+              Štítek
+              <select value={r.badge ?? ''} onChange={(e) => set('badge', e.target.value || null)}>
+                <option value="">— žádný —</option>
+                <option value="New">Novinka</option>
+                <option value="Bestseller">Nejprodávanější</option>
+              </select>
+            </label>
+          )}
+          {!r.is_gift_card && (
+            <label>
+              Emoji (záložní obrázek)
+              <input value={r.emoji} onChange={(e) => set('emoji', e.target.value)} />
+            </label>
+          )}
+          {!r.is_gift_card && (
+            <label>
+              Barva pozadí karty
+              <select
+                value={r.gradient ?? ''}
+                onChange={(e) => set('gradient', e.target.value)}
+              >
+                {Object.entries(GRADIENTS).map(([name, g]) => (
+                  <option key={name} value={g}>{name}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             Pořadí (nižší = výš)
             <input type="number" value={r.sort} onChange={(e) => set('sort', Number(e.target.value))} />
           </label>
-          <label>
-            Počet kusů skladem
-            <input
-              type="number"
-              min="0"
-              placeholder="nesledovat"
-              value={r.stock_qty == null ? '' : String(r.stock_qty)}
-              onChange={(e) =>
-                set('stock_qty', e.target.value === '' ? null : Math.max(0, Number(e.target.value)))
-              }
-            />
-          </label>
+          {!r.is_gift_card && (
+            <label>
+              Počet kusů skladem
+              <input
+                type="number"
+                min="0"
+                placeholder="nesledovat"
+                value={r.stock_qty == null ? '' : String(r.stock_qty)}
+                onChange={(e) =>
+                  set('stock_qty', e.target.value === '' ? null : Math.max(0, Number(e.target.value)))
+                }
+              />
+            </label>
+          )}
         </div>
 
+        {!r.is_gift_card && (
         <div className="admin__season-row">
           <span>Sezóny (pro sezónní akce):</span>
           {(
@@ -3705,17 +3836,23 @@ function ProductForm({
             </label>
           ))}
         </div>
+        )}
 
         <div className="admin__flags">
           {(
-            [
-              ['in_stock', 'Skladem'],
-              ['featured', 'Oblíbené kousky (úvodní strana)'],
-              ['best_seller', 'Nejprodávanější (úvodní strana)'],
-              ['seasonal', 'Sezónní kolekce (úvodní strana)'],
-              ['is_new', 'Nová kolekce'],
-              ['hidden', 'Skrýt z webu'],
-            ] as [keyof ProductRow, string][]
+            (r.is_gift_card
+              ? [
+                  ['in_stock', 'V prodeji'],
+                  ['hidden', 'Skrýt z webu'],
+                ]
+              : [
+                  ['in_stock', 'Skladem'],
+                  ['featured', 'Oblíbené kousky (úvodní strana)'],
+                  ['best_seller', 'Nejprodávanější (úvodní strana)'],
+                  ['seasonal', 'Sezónní kolekce (úvodní strana)'],
+                  ['is_new', 'Nová kolekce'],
+                  ['hidden', 'Skrýt z webu'],
+                ]) as [keyof ProductRow, string][]
           ).map(([key, label]) => (
             <label key={key} className="admin__switch">
               <input
@@ -3738,10 +3875,12 @@ function ProductForm({
             required
           />
         </label>
-        <label>
-          Materiál (česky)
-          <input value={r.material_cs ?? ''} onChange={(e) => set('material_cs', e.target.value)} />
-        </label>
+        {!r.is_gift_card && (
+          <label>
+            Materiál (česky)
+            <input value={r.material_cs ?? ''} onChange={(e) => set('material_cs', e.target.value)} />
+          </label>
+        )}
 
         <details className="admin__details">
           <summary>Překlady (EN / UK) — nepovinné, jinak se použije čeština</summary>
@@ -3751,10 +3890,12 @@ function ProductForm({
           </div>
           <label>Popis (anglicky)<textarea rows={3} value={r.desc_en ?? ''} onChange={(e) => set('desc_en', e.target.value || null)} /></label>
           <label>Popis (ukrajinsky)<textarea rows={3} value={r.desc_uk ?? ''} onChange={(e) => set('desc_uk', e.target.value || null)} /></label>
+          {!r.is_gift_card && (
           <div className="admin__grid">
             <label>Materiál (anglicky)<input value={r.material_en ?? ''} onChange={(e) => set('material_en', e.target.value || null)} /></label>
             <label>Materiál (ukrajinsky)<input value={r.material_uk ?? ''} onChange={(e) => set('material_uk', e.target.value || null)} /></label>
           </div>
+          )}
         </details>
 
         <h3>{r.is_gift_card ? 'Fotka poukazu' : 'Barevné varianty a fotky'}</h3>
@@ -3766,18 +3907,22 @@ function ProductForm({
         {r.colors.map((c, i) => (
           <div className="admin__color" key={i}>
             <div className="admin__color-head">
-              <input
-                className="admin__color-name"
-                value={c.name}
-                onChange={(e) => updateColor(i, { name: e.target.value })}
-                placeholder="Název barvy (např. Pink)"
-              />
-              <input
-                type="color"
-                value={c.hex}
-                onChange={(e) => updateColor(i, { hex: e.target.value })}
-                title="Barva tečky"
-              />
+              {!r.is_gift_card && (
+                <input
+                  className="admin__color-name"
+                  value={c.name}
+                  onChange={(e) => updateColor(i, { name: e.target.value })}
+                  placeholder="Název barvy (např. Pink)"
+                />
+              )}
+              {!r.is_gift_card && (
+                <input
+                  type="color"
+                  value={c.hex}
+                  onChange={(e) => updateColor(i, { hex: e.target.value })}
+                  title="Barva tečky"
+                />
+              )}
               <label className="admin__btn admin__btn--small">
                 + Nahrát fotky
                 <input
@@ -3788,7 +3933,7 @@ function ProductForm({
                   onChange={(e) => e.target.files && void uploadImages(i, e.target.files)}
                 />
               </label>
-              {r.colors.length > 1 && (
+              {r.colors.length > 1 && !r.is_gift_card && (
                 <button
                   type="button"
                   className="admin__btn admin__btn--small admin__btn--danger"
@@ -3893,6 +4038,7 @@ function ProductForm({
             webu zákazníkovi zašedne a nepůjde vybrat.
           </p>
         )}
+        {!r.is_gift_card && (
         <button
           type="button"
           className="admin__btn"
@@ -3903,6 +4049,7 @@ function ProductForm({
         >
           + Přidat barevnou variantu
         </button>
+        )}
 
         <div className="admin__form-foot">
           <button type="button" className="admin__btn" onClick={onClose}>Zrušit</button>

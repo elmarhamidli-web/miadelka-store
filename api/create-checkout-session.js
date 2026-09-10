@@ -111,6 +111,18 @@ async function getVatRateId(percent) {
   return created.id
 }
 
+/**
+ * Delivery mode of a purchased voucher, validated against what the shop
+ * actually offers — the client cannot ask for post when only e-mail is on.
+ */
+function giftMode(row, requested) {
+  const allowed = row.gift_delivery === 'both'
+    ? ['online', 'physical']
+    : [row.gift_delivery || 'online']
+  const want = String(requested || '')
+  return allowed.includes(want) ? want : allowed[0]
+}
+
 /** Splits a VAT-inclusive amount into net base and tax (both CZK, rounded). */
 function splitVat(totalCzk, percent) {
   const total = Math.round(Number(totalCzk) || 0)
@@ -280,7 +292,10 @@ export default async function handler(req, res) {
         id: row.id,
         name: row.name_en || row.name_cs,
         name_cs: row.name_cs,
-        size: isGift ? '' : String(item.size || '').slice(0, 30),
+        // For a voucher the size slot carries how it is delivered.
+        size: isGift
+          ? giftMode(row, item.size)
+          : String(item.size || '').slice(0, 30),
         color: isGift ? '' : String(item.color || '').slice(0, 40),
         qty,
         price_czk: priceCzk,
@@ -288,8 +303,11 @@ export default async function handler(req, res) {
       })
     }
 
-    // Vouchers travel by e-mail — a basket of vouchers only pays no postage.
-    const giftOnly = orderItems.length > 0 && orderItems.every((i) => i.is_gift_card)
+    // Only a basket of e-mailed vouchers pays no postage — a printed voucher
+    // is a parcel like any other.
+    const giftOnly =
+      orderItems.length > 0 &&
+      orderItems.every((i) => i.is_gift_card && i.size !== 'physical')
 
     // 2. Shipping from settings + discount/gift card validation.
     const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)

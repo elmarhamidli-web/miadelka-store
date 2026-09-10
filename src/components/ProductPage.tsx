@@ -10,6 +10,7 @@ import { applyProductSeo } from '../lib/seo'
 import { fadeUp, reveal, stagger } from '../lib/motion'
 import { fetchApprovedReviews, type ReviewRow } from '../lib/reviews'
 import { colorQty, tracksVariants, variantQty } from '../lib/stock'
+import { defaultGiftMode, giftModes, type GiftDelivery } from '../lib/gift'
 import { ProductCard } from './ProductCard'
 import {
   HeartIcon,
@@ -99,8 +100,13 @@ export function ProductPage() {
   // derived: keep the customer's pick while it is in stock, otherwise fall
   // back to the first size still available in this colour.
   const sizeInStock = (s: string) => !byVariant || (variantQty(product, s, activeColor) ?? 0) > 0
+  const giftOptions = isGift ? giftModes(product) : []
+  const giftMode: GiftDelivery =
+    isGift && size && (giftOptions as string[]).includes(size)
+      ? (size as GiftDelivery)
+      : defaultGiftMode(product)
   const chosenSize = isGift
-    ? ''
+    ? giftMode
     : size && sizeInStock(size)
       ? size
       : (product.sizes.find(sizeInStock) ?? product.sizes[0] ?? '')
@@ -235,8 +241,28 @@ export function ProductPage() {
                 <div className="pdp__gift">
                   <strong>🎁 {g.badge}</strong>
                   <p>{g.how}</p>
+                  {giftOptions.length > 1 ? (
+                    <div className="pdp__gift-modes">
+                      <span className="pdp__option-label">{g.deliveryLabel}</span>
+                      {giftOptions.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          className={`pdp__gift-mode ${giftMode === m ? 'is-active' : ''}`}
+                          onClick={() => setSize(m)}
+                        >
+                          <strong>{m === 'online' ? g.byEmail : g.byPost}</strong>
+                          <span>{m === 'online' ? g.byEmailNote : g.byPostNote}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="pdp__gift-single">
+                      {giftOptions[0] === 'physical' ? g.byPostNote : g.byEmailNote}
+                    </p>
+                  )}
                   <ul>
-                    <li>{g.noShipping}</li>
+                    {giftMode === 'online' && <li>{g.noShipping}</li>}
                     <li>{g.emailNote}</li>
                     <li>{g.cardOnly}</li>
                   </ul>

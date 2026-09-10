@@ -196,6 +196,12 @@ export const cs: Dictionary = {
       noShipping: 'Poukaz posíláme e-mailem — neplatíte žádné poštovné.',
       cardOnly: 'Dárkový poukaz lze zaplatit pouze kartou online.',
       emailNote: 'Kód poukazu pošleme na e-mail uvedený v objednávce.',
+      deliveryLabel: 'Jak chcete poukaz doručit?',
+      byEmail: '✉️ E-mailem',
+      byEmailNote: 'Kód dorazí hned po zaplacení — bez poštovného.',
+      byPost: '📮 Poštou',
+      byPostNote: 'Pošleme vytištěný poukaz jako běžnou zásilku.',
+      personalPickup: 'Osobní odběr — zboží si vyzvednete u nás.',
     },
     checkout: {
       title: 'Pokladna',

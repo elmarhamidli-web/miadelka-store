@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tracksVariants, variantQty } from '../lib/stock'
+import { defaultGiftMode } from '../lib/gift'
 import type { Product } from '../types'
 import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
@@ -46,7 +47,7 @@ export function ProductCard({ product }: Props) {
     }
     addToCart(
       product,
-      product.isGiftCard ? '' : (pickedSize ?? product.sizes[0] ?? ''),
+      product.isGiftCard ? defaultGiftMode(product) : (pickedSize ?? product.sizes[0] ?? ''),
       product.isGiftCard ? '' : colorName_,
       1,
     )

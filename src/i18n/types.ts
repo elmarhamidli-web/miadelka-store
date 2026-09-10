@@ -164,6 +164,12 @@ export interface Dictionary {
       noShipping: string
       cardOnly: string
       emailNote: string
+      deliveryLabel: string
+      byEmail: string
+      byEmailNote: string
+      byPost: string
+      byPostNote: string
+      personalPickup: string
     }
     checkout: {
       title: string

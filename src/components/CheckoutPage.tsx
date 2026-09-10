@@ -15,6 +15,7 @@ import {
   shippingPriceCzk,
   type ShippingMethod,
 } from '../lib/shipping'
+import { isEmailOnlyBasket } from '../lib/gift'
 import { ArrowIcon } from './icons'
 
 const CZK = 24
@@ -80,9 +81,11 @@ export function CheckoutPage() {
     }
   }, [])
 
-  // A basket of vouchers only is delivered by e-mail: no carrier, no postage,
-  // and card payment only (a code must never leave before it is paid for).
-  const giftOnly = cart.length > 0 && cart.every((i) => i.product.isGiftCard === true)
+  // Only a basket of e-mailed vouchers skips the carrier entirely: no
+  // postage, no pickup point. A printed voucher is a parcel like any other.
+  // Card payment stays mandatory whenever a voucher is involved — a code must
+  // never leave before it is paid for.
+  const giftOnly = isEmailOnlyBasket(cart)
   const hasGift = cart.some((i) => i.product.isGiftCard === true)
 
   const method = giftOnly ? null : methods.find((m) => m.code === methodCode) ?? null
@@ -417,6 +420,13 @@ export function CheckoutPage() {
                   )
                 })}
 
+                {method?.kind === 'personal' && (
+                  <p className="checkout__gift-note">
+                    🏪 {dict.ui.gift.personalPickup}
+                    {settings.pickup_address ? ` ${settings.pickup_address}` : ''}
+                  </p>
+                )}
+
                 {needsPoint && (
                   <div className="checkout__point">
                     {point ? (
@@ -512,9 +522,13 @@ export function CheckoutPage() {
                 <div className="checkout__item-info">
                   <strong>{productName(item.product.id, item.product.name)}</strong>
                   <span>
-                    {[item.color && colorName(item.color), item.size, `${item.quantity}×`]
-                      .filter(Boolean)
-                      .join(' · ')}
+                    {item.product.isGiftCard
+                      ? `${
+                          item.size === 'physical' ? dict.ui.gift.byPost : dict.ui.gift.byEmail
+                        } · ${item.quantity}×`
+                      : [item.color && colorName(item.color), item.size, `${item.quantity}×`]
+                          .filter(Boolean)
+                          .join(' · ')}
                   </span>
                 </div>
                 <span className="checkout__item-price">

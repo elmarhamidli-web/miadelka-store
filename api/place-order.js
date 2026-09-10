@@ -72,6 +72,8 @@ export default async function handler(req, res) {
       const row = byId[item.id]
       const qty = Math.min(Math.max(parseInt(item.qty, 10) || 1, 1), 20)
       // A voucher code must never leave before the money is in — card only.
+      // This covers printed vouchers too: the card is posted, but the value
+      // on it is money and must be paid up front.
       if (row?.is_gift_card === true) {
         res.status(400).json({ error: 'Gift vouchers require card payment' })
         return
@@ -183,7 +185,29 @@ export default async function handler(req, res) {
       }
     }
 
-    await sendOrderEmails({ ...orderPayload, order_number: orderNumber }, paidByGift)
+    // Cash on delivery / bank transfer never touches Stripe Checkout, so the
+    // faktura is issued here — before the e-mails, so the customer gets the
+    // PDF link in the confirmation. A failure must never lose the order.
+    let invoice = {}
+    try {
+      const { issueInvoiceForOrder } = await import('./create-invoice.js')
+      invoice = await issueInvoiceForOrder(
+        { ...orderPayload, order_number: orderNumber, status: paidByGift ? 'paid' : 'new' },
+        { vatRate },
+      )
+    } catch (err) {
+      console.error(`Invoice for order #${orderNumber} failed:`, err)
+    }
+
+    await sendOrderEmails(
+      {
+        ...orderPayload,
+        order_number: orderNumber,
+        invoice_url: invoice.invoiceUrl ?? null,
+        invoice_pdf: invoice.invoicePdf ?? null,
+      },
+      paidByGift,
+    )
 
     res.status(200).json({ orderNumber, paidByGift })
   } catch (err) {

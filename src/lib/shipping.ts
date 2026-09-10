@@ -14,8 +14,8 @@ export interface ShippingMethod {
   price_czk: number
   /** Free shipping from this order value (null = never free). */
   free_over_czk: number | null
-  /** 'pickup' methods require choosing a pickup point. */
-  kind: 'address' | 'pickup'
+  /** 'pickup' needs a branch chosen; 'personal' = collected at the shop. */
+  kind: 'address' | 'pickup' | 'personal'
   /** zasilkovna | ppl | balikovna | … — drives which picker is shown. */
   carrier: string | null
   cod_allowed: boolean
