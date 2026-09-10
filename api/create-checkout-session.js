@@ -298,8 +298,8 @@ export default async function handler(req, res) {
         // For a voucher the size slot carries how it is delivered.
         size: isGift
           ? giftMode(row, item.size)
-          : String(item.size || '').slice(0, 30),
-        color: isGift ? '' : String(item.color || '').slice(0, 40),
+          : String(item.size || '').trim().slice(0, 30),
+        color: isGift ? '' : String(item.color || '').trim().slice(0, 40),
         qty,
         price_czk: priceCzk,
         is_gift_card: isGift,

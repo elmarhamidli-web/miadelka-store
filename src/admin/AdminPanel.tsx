@@ -278,6 +278,9 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
     setEditing(null)
     setIsNew(false)
     setView(next)
+    // Stock changes with every order, so re-read it whenever these two tabs
+    // are opened — otherwise the page would show the state from login time.
+    if (next === 'inventory' || next === 'products') void load()
   }
 
   const patch = async (id: string, changes: Partial<ProductRow>) => {
@@ -3745,7 +3748,7 @@ function ProductForm({
   /** Turns the per-colour rows into the stock_variants map + size list. */
   const buildStock = () => {
     const variants: StockVariants = {}
-    const sizes = [...(r.sizes ?? [])]
+    const sizes = [...(r.sizes ?? []).map((s) => s.trim())]
     r.colors.forEach((c, ci) => {
       for (const line of rowsFor(ci)) {
         const s = line.size.trim()
@@ -3796,11 +3799,15 @@ function ProductForm({
       return
     }
     setBusy(true)
+    // A pasted colour name can carry an invisible non-breaking space, which
+    // would make the stock key differ from the one the order builds.
+    const cleanColors = r.colors.map((c) => ({ ...c, name: c.name.trim() }))
     const { variants, sizes } = buildStock()
     const tracked = !isGift && Object.keys(variants).length > 0
     const record: ProductRow = {
       ...r,
       id: r.id || slugify(r.name_cs),
+      colors: cleanColors,
       is_gift_card: isGift,
       // Sizes typed into the stock table are added to the product's size list
       // automatically, so the owner never has to fill them in twice.

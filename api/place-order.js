@@ -106,8 +106,8 @@ export default async function handler(req, res) {
               : row.gift_delivery === 'physical'
                 ? 'physical'
                 : 'online')
-          : String(item.size || '').slice(0, 30),
-        color: isGift ? '' : String(item.color || '').slice(0, 40),
+          : String(item.size || '').trim().slice(0, 30),
+        color: isGift ? '' : String(item.color || '').trim().slice(0, 40),
         qty,
         price_czk: priceCzk,
         is_gift_card: isGift,

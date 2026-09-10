@@ -43,8 +43,8 @@ create policy stock_movements_read on public.stock_movements
 -- Klíč varianty — musí odpovídat variantKey() ve frontendu.
 create or replace function public.variant_key(p_size text, p_color text)
 returns text language sql immutable as $$
-  select coalesce(nullif(btrim(p_size), ''), '-') || '__' ||
-         coalesce(nullif(btrim(p_color), ''), '-')
+  select coalesce(nullif(btrim(p_size,  E' \t\n\r\f\v\u00A0\u2007\u202F'), ''), '-') || '__' ||
+         coalesce(nullif(btrim(p_color, E' \t\n\r\f\v\u00A0\u2007\u202F'), ''), '-')
 $$;
 
 -- Celkový stav skladu = součet variant, pokud je matice vyplněná.
