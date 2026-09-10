@@ -337,3 +337,60 @@ export async function sendWelcomeEmail(email, code) {
     `),
   })
 }
+
+/* ------------------------------------------------------------------ */
+/* Gift vouchers bought in the shop                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Delivers the purchased voucher codes. `cards` is [{ code, valueCzk }].
+ * Sent only after the payment really went through.
+ */
+export async function sendGiftCardEmail(order, cards) {
+  if (!cards || cards.length === 0) return
+  const total = cards.reduce((sum, c) => sum + Number(c.valueCzk || 0), 0)
+  const blocks = cards
+    .map(
+      (c) => `
+      <div style="background:#fff8fb;border:2px dashed #ef5f8d;border-radius:16px;padding:20px;margin:0 0 14px;text-align:center;">
+        <div style="color:#8b7d8b;font-size:13px;margin-bottom:6px;">Hodnota poukazu</div>
+        <div style="color:#3a2e3a;font-size:26px;font-weight:800;margin-bottom:12px;">${Number(
+          c.valueCzk,
+        ).toLocaleString('cs-CZ')} Kč</div>
+        <div style="font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:22px;letter-spacing:2px;color:#3a2e3a;background:#ffffff;border-radius:12px;padding:12px 18px;display:inline-block;">
+          ${c.code}
+        </div>
+      </div>`,
+    )
+    .join('')
+
+  await sendEmail({
+    to: order.email,
+    replyTo: NOTIFY,
+    subject:
+      cards.length === 1
+        ? `Váš dárkový poukaz na ${Number(cards[0].valueCzk).toLocaleString('cs-CZ')} Kč 🎁`
+        : `Vaše dárkové poukazy (${cards.length}×) 🎁`,
+    html: shell(`
+      <h1 style="font-size:22px;color:#3a2e3a;margin:0 0 6px;">Váš dárek je připraven 🎁</h1>
+      <p style="color:#6b5d6b;line-height:1.6;">
+        Děkujeme za nákup. ${
+          cards.length === 1 ? 'Níže najdete kód poukazu' : 'Níže najdete kódy poukazů'
+        } z objednávky <strong>#${order.order_number}</strong>.
+        Kód stačí zadat v pokladně do pole „Slevový kód nebo dárkový poukaz".
+      </p>
+      ${blocks}
+      <p style="color:#6b5d6b;line-height:1.6;font-size:14px;">
+        Poukaz můžete darovat dál — stačí předat kód. Pokud útrata nevyčerpá
+        celou hodnotu, zbytek zůstává na poukazu na příští nákup.
+        Celková hodnota: <strong>${total.toLocaleString('cs-CZ')} Kč</strong>
+        (částka je konečná, včetně DPH).
+      </p>
+      <p style="text-align:center;margin:24px 0 8px;">
+        <a href="${SITE}" style="display:inline-block;background:#ef5f8d;color:#fff;text-decoration:none;font-weight:700;padding:13px 30px;border-radius:999px;">
+          Vybrat dárek
+        </a>
+      </p>
+    `),
+  })
+}

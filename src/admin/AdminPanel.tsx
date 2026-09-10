@@ -17,6 +17,7 @@ const CATEGORIES: { id: CategoryId; label: string }[] = [
   { id: 'girls', label: 'Holky' },
   { id: 'boys', label: 'Kluci' },
   { id: 'new-collection', label: 'Nová kolekce' },
+  { id: 'gift-cards', label: 'Dárkové poukazy' },
 ]
 
 const GRADIENTS: Record<string, string> = {
@@ -70,6 +71,7 @@ const emptyRow = (): ProductRow => ({
   material_uk: null,
   stock_qty: null,
   stock_variants: {},
+  is_gift_card: false,
   seasons: [],
 })
 
@@ -389,7 +391,7 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
       ) : view === 'inventory' ? (
         <InventoryView
           notify={notify}
-          products={rows}
+          products={rows.filter((r) => !r.is_gift_card)}
           onStockChange={(id, qty) => setRows((rs) => rs.map((r) => (r.id === id ? { ...r, stock_qty: qty } : r)))}
           onVariantsChange={(id, variants, qty) =>
             setRows((rs) =>
@@ -464,9 +466,11 @@ function Dashboard({ onSignOut }: { onSignOut: () => void }) {
                     {r.badge ? ` · ${r.badge}` : ''}
                     {r.hidden ? ' · skrytý' : ''}
                     {!r.in_stock ? ' · vyprodáno' : ''}
-                    {r.stock_qty != null
-                      ? ` · sklad: ${r.stock_qty} ks`
-                      : ' · sklad: nesleduje se'}
+                    {r.is_gift_card
+                      ? ' · 🎁 dárkový poukaz'
+                      : r.stock_qty != null
+                        ? ` · sklad: ${r.stock_qty} ks`
+                        : ' · sklad: nesleduje se'}
                   </span>
                 </div>
                 <div className="admin__row-actions">
@@ -2343,6 +2347,10 @@ interface GiftRow {
   active: boolean
   note: string | null
   expires_at: string | null
+  /** Set when the voucher was bought in the e-shop (not created by hand). */
+  order_number: number | null
+  recipient_email: string | null
+  sold_at: string | null
 }
 
 const genCode = (prefix: string, blocks = 2) => {
@@ -2642,6 +2650,7 @@ function PromosView({ notify }: { notify: (m: string) => void }) {
                 <tr>
                   <th>Kód</th>
                   <th>Zůstatek</th>
+                  <th>Původ</th>
                   <th>Stav</th>
                   <th></th>
                 </tr>
@@ -2660,6 +2669,19 @@ function PromosView({ notify }: { notify: (m: string) => void }) {
                       <div className="admin__muted admin__small">
                         z {Number(r.initial_czk).toLocaleString('cs-CZ')} Kč
                       </div>
+                    </td>
+                    <td>
+                      {r.order_number ? (
+                        <>
+                          <strong>🛒 Prodáno</strong>
+                          <div className="admin__muted admin__small">
+                            objednávka #{r.order_number}
+                            {r.recipient_email ? ` · ${r.recipient_email}` : ''}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="admin__muted admin__small">Vytvořeno ručně</span>
+                      )}
                     </td>
                     <td>
                       <label className="admin__switch">
@@ -3361,18 +3383,20 @@ function ProductForm({
     }
     setBusy(true)
     const { variants, sizes } = buildStock()
-    const tracked = Object.keys(variants).length > 0
+    const tracked = !r.is_gift_card && Object.keys(variants).length > 0
     const record: ProductRow = {
       ...r,
       id: r.id || slugify(r.name_cs),
       // Sizes typed into the stock table are added to the product's size list
       // automatically, so the owner never has to fill them in twice.
-      sizes: (tracked ? sizes : r.sizes).filter(Boolean),
-      ages: r.ages.filter(Boolean),
-      stock_variants: variants,
-      stock_qty: tracked
-        ? Object.values(variants).reduce((a, b) => a + b, 0)
-        : r.stock_qty,
+      sizes: r.is_gift_card ? [] : (tracked ? sizes : r.sizes).filter(Boolean),
+      ages: r.is_gift_card ? [] : r.ages.filter(Boolean),
+      stock_variants: tracked ? variants : {},
+      stock_qty: r.is_gift_card
+        ? null
+        : tracked
+          ? Object.values(variants).reduce((a, b) => a + b, 0)
+          : r.stock_qty,
     }
     const { error } = await supabase!.from('products').upsert(record)
     setBusy(false)
@@ -3394,6 +3418,35 @@ function ProductForm({
           <button type="button" className="admin__btn" onClick={onClose}>← Zpět na seznam</button>
         </div>
 
+        {/* A voucher is a product too — same photos, but no sizes or stock. */}
+        <label className={`admin__giftswitch ${r.is_gift_card ? 'is-on' : ''}`}>
+          <input
+            type="checkbox"
+            checked={r.is_gift_card}
+            onChange={(e) => {
+              const on = e.target.checked
+              setR((prev) => ({
+                ...prev,
+                is_gift_card: on,
+                category: on ? 'gift-cards' : prev.category,
+                sizes: on ? [] : prev.sizes,
+                ages: on ? [] : prev.ages,
+                stock_qty: on ? null : prev.stock_qty,
+                stock_variants: on ? {} : prev.stock_variants,
+                old_price_czk: on ? null : prev.old_price_czk,
+              }))
+            }}
+          />
+          <span>
+            <strong>🎁 Tohle je dárkový poukaz</strong>
+            <small>
+              Cena níže je hodnota poukazu — částka je konečná, včetně DPH. Po zaplacení se
+              zákazníkovi automaticky vygeneruje kód na tuto částku a pošle se mu e-mailem.
+              Poukaz se neposílá poštou a nesleduje se u něj sklad.
+            </small>
+          </span>
+        </label>
+
         <h3>Základní údaje</h3>
         <div className="admin__grid">
           <label>
@@ -3409,7 +3462,7 @@ function ProductForm({
             </select>
           </label>
           <label>
-            Cena (Kč) *
+            {r.is_gift_card ? 'Hodnota poukazu (Kč, včetně DPH) *' : 'Cena (Kč) *'}
             <input
               type="number"
               min={1}
@@ -3418,30 +3471,36 @@ function ProductForm({
               required
             />
           </label>
-          <label>
-            Původní cena (Kč, pro slevu)
-            <input
-              type="number"
-              value={r.old_price_czk ?? ''}
-              onChange={(e) => set('old_price_czk', e.target.value ? Number(e.target.value) : null)}
-            />
-          </label>
-          <label>
-            Velikosti (oddělené čárkou)
-            <input
-              value={csv(r.sizes)}
-              onChange={(e) => set('sizes', parseCsv(e.target.value))}
-              placeholder="0-3m, 3-6m, 6-9m"
-            />
-          </label>
-          <label>
-            Věk (filtr; oddělený čárkou)
-            <input
-              value={csv(r.ages)}
-              onChange={(e) => set('ages', parseCsv(e.target.value))}
-              placeholder="0-6m, 6-12m, 12-24m"
-            />
-          </label>
+          {!r.is_gift_card && (
+            <label>
+              Původní cena (Kč, pro slevu)
+              <input
+                type="number"
+                value={r.old_price_czk ?? ''}
+                onChange={(e) => set('old_price_czk', e.target.value ? Number(e.target.value) : null)}
+              />
+            </label>
+          )}
+          {!r.is_gift_card && (
+            <label>
+              Velikosti (oddělené čárkou)
+              <input
+                value={csv(r.sizes)}
+                onChange={(e) => set('sizes', parseCsv(e.target.value))}
+                placeholder="0-3m, 3-6m, 6-9m"
+              />
+            </label>
+          )}
+          {!r.is_gift_card && (
+            <label>
+              Věk (filtr; oddělený čárkou)
+              <input
+                value={csv(r.ages)}
+                onChange={(e) => set('ages', parseCsv(e.target.value))}
+                placeholder="0-6m, 6-12m, 12-24m"
+              />
+            </label>
+          )}
           <label>
             Štítek
             <select value={r.badge ?? ''} onChange={(e) => set('badge', e.target.value || null)}>
@@ -3562,7 +3621,12 @@ function ProductForm({
           </div>
         </details>
 
-        <h3>Barevné varianty a fotky</h3>
+        <h3>{r.is_gift_card ? 'Fotka poukazu' : 'Barevné varianty a fotky'}</h3>
+        {r.is_gift_card && (
+          <p className="admin__muted admin__small">
+            Nahrajte obrázek poukazu — ukáže se zákazníkovi na webu i v e-mailu s kódem.
+          </p>
+        )}
         {r.colors.map((c, i) => (
           <div className="admin__color" key={i}>
             <div className="admin__color-head">
@@ -3624,6 +3688,7 @@ function ProductForm({
             </div>
 
             {/* -------- stock for this colour, size by size -------- */}
+            {!r.is_gift_card && (
             <div className="admin__color-stock">
               <div className="admin__color-stock-head">
                 <strong>Sklad této barvy</strong>
@@ -3682,13 +3747,16 @@ function ProductForm({
                 + Přidat velikost
               </button>
             </div>
+            )}
           </div>
         ))}
-        <p className="admin__muted admin__small">
-          Velikosti si u každé barvy napíšete sami — do produktu se doplní automaticky. Celkový
-          stav skladu se spočítá jako součet všech barev a velikostí. Vyprodaná kombinace se na
-          webu zákazníkovi zašedne a nepůjde vybrat.
-        </p>
+        {!r.is_gift_card && (
+          <p className="admin__muted admin__small">
+            Velikosti si u každé barvy napíšete sami — do produktu se doplní automaticky. Celkový
+            stav skladu se spočítá jako součet všech barev a velikostí. Vyprodaná kombinace se na
+            webu zákazníkovi zašedne a nepůjde vybrat.
+          </p>
+        )}
         <button
           type="button"
           className="admin__btn"

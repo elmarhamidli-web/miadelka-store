@@ -157,6 +157,14 @@ export interface Dictionary {
       notFoundSub: string
       backHome: string
     }
+    gift: {
+      badge: string
+      how: string
+      vat: string
+      noShipping: string
+      cardOnly: string
+      emailNote: string
+    }
     checkout: {
       title: string
       contact: string

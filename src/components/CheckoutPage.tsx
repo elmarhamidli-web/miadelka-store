@@ -80,8 +80,13 @@ export function CheckoutPage() {
     }
   }, [])
 
-  const method = methods.find((m) => m.code === methodCode) ?? null
-  const needsPoint = method?.kind === 'pickup'
+  // A basket of vouchers only is delivered by e-mail: no carrier, no postage,
+  // and card payment only (a code must never leave before it is paid for).
+  const giftOnly = cart.length > 0 && cart.every((i) => i.product.isGiftCard === true)
+  const hasGift = cart.some((i) => i.product.isGiftCard === true)
+
+  const method = giftOnly ? null : methods.find((m) => m.code === methodCode) ?? null
+  const needsPoint = !giftOnly && method?.kind === 'pickup'
 
   const discountAmt = discount ? discount.czk / CZK : 0
   const giftAmt = gift ? gift.czk / CZK : 0
@@ -89,19 +94,23 @@ export function CheckoutPage() {
 
   // Shipping comes from the selected method; falls back to global settings
   // while the methods are still loading (or if none are configured).
-  const shippingCzk = method
-    ? shippingPriceCzk(method, subtotalAfterDiscountCzk)
-    : subtotalAfterDiscountCzk >= settings.free_over_czk
-      ? 0
-      : settings.shipping_czk
+  const shippingCzk = giftOnly
+    ? 0
+    : method
+      ? shippingPriceCzk(method, subtotalAfterDiscountCzk)
+      : subtotalAfterDiscountCzk >= settings.free_over_czk
+        ? 0
+        : settings.shipping_czk
   const shipping = shippingCzk / CZK
   const shippingFree = shippingCzk === 0
   const total = Math.max(0, subtotal - discountAmt + shipping - giftAmt)
 
-  // Cash on delivery may be disabled for a specific method.
+  // Cash on delivery may be disabled for a specific method — and is never
+  // possible when the basket contains a gift voucher.
   useEffect(() => {
-    if (method && !method.cod_allowed && payment === 'cod') setPayment('card')
-  }, [method, payment])
+    if (payment !== 'cod') return
+    if (hasGift || (method && !method.cod_allowed)) setPayment('card')
+  }, [method, payment, hasGift])
 
   const choosePoint = async () => {
     if (!method) return
@@ -361,7 +370,14 @@ export function CheckoutPage() {
               </label>
             </div>
 
-            {methods.length > 0 && (
+            {giftOnly ? (
+              <div className="checkout__panel">
+                <h2>{c.shippingTitle}</h2>
+                <p className="checkout__gift-note">
+                  🎁 {dict.ui.gift.noShipping} {dict.ui.gift.emailNote}
+                </p>
+              </div>
+            ) : methods.length > 0 && (
               <div className="checkout__panel" id="shipping-methods">
                 <h2>{c.shippingTitle}</h2>
                 {methods.map((m) => {
@@ -449,19 +465,19 @@ export function CheckoutPage() {
               </label>
               <label
                 className={`checkout__pay ${payment === 'cod' ? 'is-active' : ''} ${
-                  method && !method.cod_allowed ? 'is-disabled' : ''
+                  hasGift || (method && !method.cod_allowed) ? 'is-disabled' : ''
                 }`}
               >
                 <input
                   type="radio"
                   name="payment"
-                  disabled={Boolean(method && !method.cod_allowed)}
+                  disabled={hasGift || Boolean(method && !method.cod_allowed)}
                   checked={payment === 'cod'}
                   onChange={() => setPayment('cod')}
                 />
                 <div>
                   <strong>{c.cod}</strong>
-                  <span>{c.codNote}</span>
+                  <span>{hasGift ? dict.ui.gift.cardOnly : c.codNote}</span>
                 </div>
               </label>
             </div>
@@ -489,7 +505,9 @@ export function CheckoutPage() {
                 <div className="checkout__item-info">
                   <strong>{productName(item.product.id, item.product.name)}</strong>
                   <span>
-                    {colorName(item.color)} · {item.size} · {item.quantity}×
+                    {[item.color && colorName(item.color), item.size, `${item.quantity}×`]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
                 </div>
                 <span className="checkout__item-price">

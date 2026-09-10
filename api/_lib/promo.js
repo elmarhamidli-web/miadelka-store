@@ -20,7 +20,9 @@ async function sb(path, options = {}) {
     headers: { ...serviceHeaders(), ...(options.headers || {}) },
   })
   if (!res.ok) throw new Error(`Supabase ${path}: ${res.status} ${await res.text()}`)
-  return res.status === 204 ? null : res.json()
+  if (res.status === 204) return null
+  const text = await res.text()
+  return text ? JSON.parse(text) : null
 }
 
 export const normalizeCode = (code) => String(code || '').trim().toUpperCase()
@@ -128,6 +130,7 @@ export async function getActivePromotions() {
 
 /** Effective price of a product row after seasonal promotions (CZK). */
 export function promoPrice(row, promos) {
+  if (row.is_gift_card === true) return Number(row.price_czk)
   const seasons = row.seasons || []
   let pct = 0
   for (const p of promos) {
@@ -160,8 +163,16 @@ export async function getShippingMethod(code) {
  * Shipping threshold applies to the subtotal AFTER discount.
  * Gift card covers up to the remaining total (items + shipping).
  * `method` (optional) overrides the global shipping settings.
+ * `freeShipping` forces 0 Kč postage (basket of e-mailed gift vouchers).
  */
-export async function applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode, method }) {
+export async function applyPromo({
+  subtotalCzk,
+  shippingCfg,
+  discountCode,
+  giftCode,
+  method,
+  freeShipping = false,
+}) {
   let discountCzk = 0
   let discount = null
   if (discountCode) {
@@ -172,13 +183,15 @@ export async function applyPromo({ subtotalCzk, shippingCfg, discountCode, giftC
     }
   }
   const afterDiscount = subtotalCzk - discountCzk
-  const shippingCzk = method
-    ? method.free_over_czk != null && afterDiscount >= Number(method.free_over_czk)
-      ? 0
-      : Number(method.price_czk)
-    : afterDiscount >= Number(shippingCfg.free_over_czk)
-      ? 0
-      : Number(shippingCfg.shipping_czk)
+  const shippingCzk = freeShipping
+    ? 0
+    : method
+      ? method.free_over_czk != null && afterDiscount >= Number(method.free_over_czk)
+        ? 0
+        : Number(method.price_czk)
+      : afterDiscount >= Number(shippingCfg.free_over_czk)
+        ? 0
+        : Number(shippingCfg.shipping_czk)
 
   let giftCzk = 0
   let gift = null
@@ -191,4 +204,98 @@ export async function applyPromo({ subtotalCzk, shippingCfg, discountCode, giftC
   }
   const totalCzk = Math.max(0, afterDiscount + shippingCzk - giftCzk)
   return { discount, discountCzk, gift, giftCzk, shippingCzk, totalCzk }
+}
+
+/* ------------------------------------------------------------------ */
+/* Selling gift vouchers                                               */
+/* ------------------------------------------------------------------ */
+
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+function randomGiftCode() {
+  const block = () =>
+    Array.from(
+      { length: 4 },
+      () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)],
+    ).join('')
+  return `GIFT-${block()}-${block()}`
+}
+
+/**
+ * Create one gift card row per purchased voucher (quantity aware).
+ * Called only after the order is really paid.
+ *
+ * Idempotent: vouchers already issued for this order are reused instead of
+ * created again, so a Stripe webhook retry re-sends the same codes rather
+ * than minting new money. Throws when a code cannot be created — the caller
+ * must fail loudly so the delivery is retried.
+ *
+ * Returns [{ code, valueCzk }] — safe to show to the buyer.
+ */
+export async function issueGiftCards(order) {
+  const items = Array.isArray(order?.items) ? order.items : []
+  const wanted = []
+  for (const item of items) {
+    if (item.is_gift_card !== true) continue
+    const value = Math.round(Number(item.price_czk) || 0)
+    const qty = Math.min(Math.max(parseInt(item.qty, 10) || 1, 1), 20)
+    if (!(value > 0)) continue
+    for (let i = 0; i < qty; i++) wanted.push(value)
+  }
+  if (wanted.length === 0) return []
+
+  const orderNumber = order?.order_number ?? null
+  const issued = []
+  const remaining = [...wanted]
+
+  // Anything already issued for this order counts towards the total.
+  if (orderNumber != null) {
+    // If this lookup fails we must NOT continue — creating a second set of
+    // vouchers for an order is real money given away twice.
+    const existing =
+      (await sb(
+        `gift_cards?order_number=eq.${encodeURIComponent(orderNumber)}&select=code,initial_czk`,
+      )) || []
+    for (const row of existing) {
+      const value = Math.round(Number(row.initial_czk))
+      const idx = remaining.indexOf(value)
+      if (idx === -1) continue
+      remaining.splice(idx, 1)
+      issued.push({ code: row.code, valueCzk: value })
+    }
+  }
+
+  for (const value of remaining) {
+    let created = false
+    let lastErr = null
+    // Retry only when the random code happens to be taken already.
+    for (let attempt = 0; attempt < 6 && !created; attempt++) {
+      const code = randomGiftCode()
+      try {
+        await sb('gift_cards', {
+          method: 'POST',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            code,
+            initial_czk: value,
+            balance_czk: value,
+            active: true,
+            order_number: orderNumber,
+            recipient_email: order?.email ?? null,
+            sold_at: new Date().toISOString(),
+            note: `Prodáno — objednávka #${orderNumber ?? '?'}`,
+          }),
+        })
+        issued.push({ code, valueCzk: value })
+        created = true
+      } catch (err) {
+        lastErr = err
+        // 23505 = unique violation → try another code. Anything else is a
+        // real failure and must not be retried silently.
+        if (!String(err.message).includes('23505')) break
+      }
+    }
+    if (!created) throw lastErr || new Error('Gift voucher could not be created')
+  }
+  return issued
 }

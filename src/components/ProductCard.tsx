@@ -44,7 +44,12 @@ export function ProductCard({ product }: Props) {
       open()
       return
     }
-    addToCart(product, pickedSize ?? product.sizes[0], colorName_, 1)
+    addToCart(
+      product,
+      product.isGiftCard ? '' : (pickedSize ?? product.sizes[0] ?? ''),
+      product.isGiftCard ? '' : colorName_,
+      1,
+    )
     celebrate({ x: e.clientX, y: e.clientY })
     openCart()
   }
@@ -118,6 +123,7 @@ export function ProductCard({ product }: Props) {
 
         <h3 className="card__name">{name}</h3>
 
+        {!product.isGiftCard && (
         <div className="card__dots" aria-label={dict.ui.shop.colour}>
           {product.colors.map((c, i) => (
             <button
@@ -133,7 +139,9 @@ export function ProductCard({ product }: Props) {
             />
           ))}
         </div>
+        )}
 
+        {!product.isGiftCard && (
         <div className="card__sizes">
           {product.sizes.slice(0, 4).map((s) => {
             const gone = !sizeAvailable(s)
@@ -155,6 +163,7 @@ export function ProductCard({ product }: Props) {
             )
           })}
         </div>
+        )}
 
         <div className="card__foot">
           <div className="card__price">

@@ -1,8 +1,8 @@
 // Stripe webhook: marks orders as paid when the Checkout Session completes
 // and sends confirmation e-mails.
 import Stripe from 'stripe'
-import { sendOrderEmails } from './_lib/email.js'
-import { redeemDiscount, redeemGiftCard } from './_lib/promo.js'
+import { sendGiftCardEmail, sendOrderEmails } from './_lib/email.js'
+import { issueGiftCards, redeemDiscount, redeemGiftCard } from './_lib/promo.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -46,6 +46,11 @@ export default async function handler(req, res) {
       const orderNumber = session.metadata?.order_number
       if (orderNumber && session.payment_status === 'paid') {
         const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        if (!serviceKey) {
+          console.error('SUPABASE_SERVICE_ROLE_KEY missing — cannot mark order paid')
+          res.status(500).json({ error: 'Server misconfigured' })
+          return
+        }
 
         // Stripe issues an invoice for the paid session — fetch its PDF /
         // hosted links so we can send them to the customer ourselves.
@@ -87,21 +92,56 @@ export default async function handler(req, res) {
           res.status(500).json({ error: 'Order update failed' })
           return
         }
-        const order = (await resp.json())?.[0]
+        let order = (await resp.json())?.[0]
+        // A retry finds the order already paid, so the PATCH matches nothing.
+        // Vouchers still have to reach the buyer, so re-read the order and let
+        // the (idempotent) issuing step run again.
+        let alreadyHandled = false
+        if (!order) {
+          alreadyHandled = true
+          try {
+            const again = await fetch(
+              `${SUPABASE_URL}/rest/v1/orders?order_number=eq.${encodeURIComponent(orderNumber)}&status=in.(paid,shipped,done)&select=*`,
+              {
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+              },
+            )
+            if (again.ok) order = (await again.json())?.[0]
+          } catch (err) {
+            console.error('Order re-read failed:', err)
+          }
+        }
         if (order) {
           // Redeem discount code / gift card exactly once, after real payment.
-          try {
-            if (order.discount_code) await redeemDiscount(order.discount_code)
-            if (order.gift_card_code && Number(order.gift_card_czk) > 0)
-              await redeemGiftCard(order.gift_card_code, Number(order.gift_card_czk))
-          } catch (err) {
-            console.error('Promo redemption failed:', err)
+          if (!alreadyHandled) {
+            try {
+              if (order.discount_code) await redeemDiscount(order.discount_code)
+              if (order.gift_card_code && Number(order.gift_card_czk) > 0)
+                await redeemGiftCard(order.gift_card_code, Number(order.gift_card_czk))
+            } catch (err) {
+              console.error('Promo redemption failed:', err)
+            }
           }
-          // Send confirmation e-mails (never fail the webhook because of them).
+          // Send confirmation e-mails first, so a voucher problem can never
+          // cost the customer their order confirmation.
+          if (!alreadyHandled) {
+            try {
+              await sendOrderEmails(order, true)
+            } catch (err) {
+              console.error('Order e-mail failed:', err)
+            }
+          }
+          // Purchased vouchers become real codes now. issueGiftCards() reuses
+          // anything already created for this order, so a retry re-sends the
+          // same codes instead of minting new ones. A failure here returns 500
+          // on purpose: the customer has paid and Stripe must retry.
           try {
-            await sendOrderEmails(order, true)
+            const cards = await issueGiftCards(order)
+            if (cards.length > 0) await sendGiftCardEmail(order, cards)
           } catch (err) {
-            console.error('Order e-mail failed:', err)
+            console.error('Gift voucher issue failed:', err)
+            res.status(500).json({ error: 'Gift voucher issue failed' })
+            return
           }
         }
       }

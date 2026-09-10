@@ -189,6 +189,14 @@ export const en: Dictionary = {
       notFoundSub: "We couldn't find this piece.",
       backHome: 'Back to home',
     },
+    gift: {
+      badge: 'Gift voucher',
+      how: 'After payment we e-mail you a unique voucher code. Enter it at checkout and its value is deducted from the order. Any remaining balance stays on the voucher for next time.',
+      vat: 'The amount shown is final, VAT included.',
+      noShipping: 'The voucher arrives by e-mail — no shipping to pay.',
+      cardOnly: 'Gift vouchers can only be paid by card online.',
+      emailNote: 'We will send the voucher code to the e-mail address in the order.',
+    },
     checkout: {
       title: 'Checkout',
       contact: 'Contact details',
@@ -257,6 +265,7 @@ export const en: Dictionary = {
             { label: 'Baby', to: '/?category=baby' },
             { label: 'Girls', to: '/?category=girls' },
             { label: 'Boys', to: '/?category=boys' },
+            { label: 'Gift Cards', to: '/?category=gift-cards' },
           ],
         },
         {
@@ -365,6 +374,7 @@ export const en: Dictionary = {
     shoes: { name: 'Shoes', tagline: 'Tiny steps' },
     accessories: { name: 'Accessories', tagline: 'Finishing touches' },
     'new-collection': { name: 'New Collection', tagline: 'Fresh arrivals' },
+    'gift-cards': { name: 'Gift Cards', tagline: 'Always the right size' },
   },
   products: {},
   reviews: {

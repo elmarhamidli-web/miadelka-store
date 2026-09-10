@@ -48,6 +48,8 @@ export interface ProductRow {
   stock_qty: number | null
   /** { "velikost__barva": kusů } — prázdné = sklad se nesleduje po variantách */
   stock_variants: Record<string, number> | null
+  /** Dárkový poukaz: cena produktu je hodnota poukazu včetně DPH. */
+  is_gift_card: boolean
   seasons: string[]
 }
 
@@ -127,9 +129,10 @@ function rowToProduct(row: ProductRow, promos: Promotion[] = []): Product {
     material: row.material_uk ?? row.material_cs ?? undefined,
   }
   // Seasonal promotion engine: automatic price reduction + return to normal.
-  const pct = promoPercentFor(row.seasons, promos)
+  const pct = row.is_gift_card === true ? 0 : promoPercentFor(row.seasons, promos)
   const promoPriceCzk = pct > 0 ? Math.round(row.price_czk * (1 - pct / 100)) : row.price_czk
-  const soldOutByStock = row.stock_qty != null && row.stock_qty <= 0
+  const soldOutByStock =
+    row.is_gift_card !== true && row.stock_qty != null && row.stock_qty <= 0
 
   return {
     id: row.id,
@@ -161,6 +164,7 @@ function rowToProduct(row: ProductRow, promos: Promotion[] = []): Product {
     inStock: row.in_stock && !soldOutByStock,
     stockQty: row.stock_qty,
     stockVariants: parseVariants(row.stock_variants),
+    isGiftCard: row.is_gift_card === true,
   }
 }
 

@@ -5,6 +5,7 @@ export type CategoryId =
   | 'shoes'
   | 'accessories'
   | 'new-collection'
+  | 'gift-cards'
 
 export interface Category {
   id: CategoryId
@@ -47,6 +48,8 @@ export interface Product {
   stockQty?: number | null
   /** Remaining stock per "size__colour" key (empty = not tracked per variant). */
   stockVariants?: Record<string, number> | null
+  /** Gift voucher sold like a product; price is the voucher value incl. VAT. */
+  isGiftCard?: boolean
 }
 
 export interface CartItem {

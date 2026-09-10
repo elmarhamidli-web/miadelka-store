@@ -71,6 +71,11 @@ export default async function handler(req, res) {
     for (const item of items) {
       const row = byId[item.id]
       const qty = Math.min(Math.max(parseInt(item.qty, 10) || 1, 1), 20)
+      // A voucher code must never leave before the money is in — card only.
+      if (row?.is_gift_card === true) {
+        res.status(400).json({ error: 'Gift vouchers require card payment' })
+        return
+      }
       if (
         !row ||
         row.hidden ||

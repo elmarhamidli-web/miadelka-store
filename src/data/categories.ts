@@ -29,6 +29,13 @@ export const categories: Category[] = [
     emoji: '✨',
     gradient: 'linear-gradient(135deg, #e7e3ff 0%, #d6e0ff 100%)',
   },
+  {
+    id: 'gift-cards',
+    name: 'Gift Cards',
+    tagline: 'Always the right size',
+    emoji: '🎁',
+    gradient: 'linear-gradient(135deg, #ffe9d6 0%, #ffd9e4 100%)',
+  },
 ]
 
 export const categoryName = (id: string): string =>

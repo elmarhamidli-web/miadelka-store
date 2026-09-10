@@ -7,11 +7,12 @@ import {
   applyPromo,
   getActivePromotions,
   getShippingMethod,
+  issueGiftCards,
   promoPrice,
   redeemDiscount,
   redeemGiftCard,
 } from './_lib/promo.js'
-import { sendOrderEmails } from './_lib/email.js'
+import { sendGiftCardEmail, sendOrderEmails } from './_lib/email.js'
 import { variantAvailable } from './_lib/stock.js'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://evqdraogfekhtdkkrmuq.supabase.co'
@@ -60,9 +61,14 @@ async function cacheStripeProductId(productId, stripeProductId) {
 /** Product fields as they should look in Stripe, derived from our DB row. */
 function stripeProductFields(row) {
   const image = row.colors?.find((c) => c.images?.length)?.images?.[0]
+  // A voucher line on the faktura must say the amount is VAT-inclusive.
+  const description =
+    row.is_gift_card === true
+      ? `Dárkový poukaz v hodnotě ${Math.round(Number(row.price_czk))} Kč — částka je konečná, včetně DPH.`
+      : (row.desc_cs || row.desc_en || '').slice(0, 400) || undefined
   return {
     name: row.name_cs || row.name_en || row.id,
-    description: (row.desc_cs || row.desc_en || '').slice(0, 400) || undefined,
+    description,
     images: image ? [image.startsWith('http') ? image : SITE + image] : undefined,
   }
 }
@@ -204,19 +210,22 @@ export default async function handler(req, res) {
     for (const item of items) {
       const row = byId[item.id]
       const qty = Math.min(Math.max(parseInt(item.qty, 10) || 1, 1), 20)
-      if (
-        !row ||
-        row.hidden ||
-        row.in_stock === false ||
-        (row.stock_qty != null && row.stock_qty <= 0)
-      ) {
+      const isGift = row?.is_gift_card === true
+      if (!row || row.hidden || row.in_stock === false) {
         res.status(400).json({ error: `Product unavailable: ${item.id}` })
         return
       }
-      // Stock split by size + colour: the exact variant must be available.
-      if (!variantAvailable(row, item.size, item.color, qty)) {
-        res.status(400).json({ error: `Variant unavailable: ${item.id}` })
-        return
+      // A voucher is generated on demand, so it is never out of stock.
+      if (!isGift) {
+        if (row.stock_qty != null && row.stock_qty <= 0) {
+          res.status(400).json({ error: `Product unavailable: ${item.id}` })
+          return
+        }
+        // Stock split by size + colour: the exact variant must be available.
+        if (!variantAvailable(row, item.size, item.color, qty)) {
+          res.status(400).json({ error: `Variant unavailable: ${item.id}` })
+          return
+        }
       }
       const priceCzk = promoPrice(row, activePromos)
       subtotalCzk += priceCzk * qty
@@ -224,22 +233,33 @@ export default async function handler(req, res) {
         id: row.id,
         name: row.name_en || row.name_cs,
         name_cs: row.name_cs,
-        size: String(item.size || '').slice(0, 30),
-        color: String(item.color || '').slice(0, 40),
+        size: isGift ? '' : String(item.size || '').slice(0, 30),
+        color: isGift ? '' : String(item.color || '').slice(0, 40),
         qty,
         price_czk: priceCzk,
+        is_gift_card: isGift,
       })
     }
+
+    // Vouchers travel by e-mail — a basket of vouchers only pays no postage.
+    const giftOnly = orderItems.length > 0 && orderItems.every((i) => i.is_gift_card)
 
     // 2. Shipping from settings + discount/gift card validation.
     const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
-    const method = await getShippingMethod(shippingMethod)
+    const method = giftOnly ? null : await getShippingMethod(shippingMethod)
     if (method && method.kind === 'pickup' && !String(pickupPointName || '').trim()) {
       res.status(400).json({ error: 'Pickup point required' })
       return
     }
-    const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode, method })
+    const promo = await applyPromo({
+      subtotalCzk,
+      shippingCfg,
+      discountCode,
+      giftCode,
+      method,
+      freeShipping: giftOnly,
+    })
     const { shippingCzk } = promo
     const shippingFree = shippingCzk === 0
     const paidByGift = promo.totalCzk === 0
@@ -309,7 +329,20 @@ export default async function handler(req, res) {
           body: JSON.stringify({ status: 'paid', payment_ref: 'gift_card' }),
         }).catch(() => undefined)
       }
-      await sendOrderEmails({ ...orderPayload, order_number: orderNumber }, true)
+      const paidOrder = { ...orderPayload, order_number: orderNumber }
+      await sendOrderEmails(paidOrder, true)
+      // Vouchers bought with another voucher: the order is already paid, so
+      // the codes have to be issued here. Tell the owner loudly if it fails —
+      // there is no webhook retry on this path.
+      try {
+        const cards = await issueGiftCards(paidOrder)
+        if (cards.length > 0) await sendGiftCardEmail(paidOrder, cards)
+      } catch (err) {
+        console.error(
+          `Gift voucher issue FAILED for paid order #${orderNumber} — issue the code manually:`,
+          err,
+        )
+      }
       res.status(200).json({ paidByGift: true, orderNumber })
       return
     }
@@ -325,6 +358,10 @@ export default async function handler(req, res) {
           currency: 'czk',
           unit_amount: Math.round(item.price_czk * 100),
           product: stripeProductId,
+          // Prices on the site are final consumer prices: whatever DPH applies
+          // is already contained in the amount, never added on top. This is
+          // what makes a 500 Kč voucher cost exactly 500 Kč on the faktura.
+          tax_behavior: 'inclusive',
         },
       })
     }
@@ -356,17 +393,20 @@ export default async function handler(req, res) {
       discounts,
       customer: stripeCustomerId,
       locale: locale === 'cs' ? 'cs' : 'auto',
-      shipping_options: [
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            display_name: shippingFree
-              ? 'Doprava zdarma'
-              : method?.name_cs || 'Doprava',
-            fixed_amount: { amount: shippingCzk * 100, currency: 'czk' },
-          },
-        },
-      ],
+      shipping_options: giftOnly
+        ? undefined
+        : [
+            {
+              shipping_rate_data: {
+                type: 'fixed_amount',
+                display_name: shippingFree
+                  ? 'Doprava zdarma'
+                  : method?.name_cs || 'Doprava',
+                fixed_amount: { amount: shippingCzk * 100, currency: 'czk' },
+                tax_behavior: 'inclusive',
+              },
+            },
+          ],
       metadata: { order_number: String(orderNumber) },
       payment_intent_data: {
         metadata: { order_number: String(orderNumber) },
@@ -387,6 +427,10 @@ export default async function handler(req, res) {
             { name: 'DIČ', value: 'CZ14420333' },
           ],
           footer:
+            'Všechny uvedené částky jsou konečné, včetně DPH.\n' +
+            (giftOnly
+              ? 'Dárkový poukaz byl doručen elektronicky na e-mail kupujícího.\n'
+              : '') +
             'Dodavatel: Azruk s.r.o., Hviezdoslavova 545/41, 627 00 Brno, Česká republika\n' +
             'IČO: 14420333 · DIČ: CZ14420333 · Bankovní účet: 7441532004/5500\n' +
             'info@littleonestore.cz · www.littleonestore.cz',

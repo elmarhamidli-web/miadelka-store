@@ -189,6 +189,14 @@ export const cs: Dictionary = {
       notFoundSub: 'Tento kousek se nám nepodařilo najít.',
       backHome: 'Zpět na domovskou stránku',
     },
+    gift: {
+      badge: 'Dárkový poukaz',
+      how: 'Po zaplacení vám na e-mail pošleme jedinečný kód poukazu. Kód zadáte v pokladně a jeho hodnota se odečte z objednávky. Nevyčerpaný zůstatek zůstává na poukazu na příště.',
+      vat: 'Uvedená částka je konečná, včetně DPH.',
+      noShipping: 'Poukaz posíláme e-mailem — neplatíte žádné poštovné.',
+      cardOnly: 'Dárkový poukaz lze zaplatit pouze kartou online.',
+      emailNote: 'Kód poukazu pošleme na e-mail uvedený v objednávce.',
+    },
     checkout: {
       title: 'Pokladna',
       contact: 'Kontaktní údaje',
@@ -257,6 +265,7 @@ export const cs: Dictionary = {
             { label: 'Miminka', to: '/?category=baby' },
             { label: 'Holky', to: '/?category=girls' },
             { label: 'Kluci', to: '/?category=boys' },
+            { label: 'Dárkové poukazy', to: '/?category=gift-cards' },
           ],
         },
         {
@@ -380,6 +389,7 @@ export const cs: Dictionary = {
     shoes: { name: 'Boty', tagline: 'První krůčky' },
     accessories: { name: 'Doplňky', tagline: 'Dotek na závěr' },
     'new-collection': { name: 'Nová kolekce', tagline: 'Čerstvé novinky' },
+    'gift-cards': { name: 'Dárkové poukazy', tagline: 'Vždy správná velikost' },
   },
   products: {
     'girls-summer-set': {

@@ -89,17 +89,21 @@ export function ProductPage() {
   const thumbs = photos ?? [product.emoji, '🧵', '📏', '🎁']
   const thumbIndex = Math.min(activeThumb, thumbs.length - 1)
 
+  const isGift = product.isGiftCard === true
+  const g = dict.ui.gift
+
   /* ---- stock per size + colour -------------------------------------- */
-  const byVariant = tracksVariants(product)
-  const activeColor = product.colors[color]?.name ?? ''
+  const byVariant = !isGift && tracksVariants(product)
+  const activeColor = isGift ? '' : (product.colors[color]?.name ?? '')
   // Switching colour can invalidate the chosen size, so the effective size is
   // derived: keep the customer's pick while it is in stock, otherwise fall
   // back to the first size still available in this colour.
   const sizeInStock = (s: string) => !byVariant || (variantQty(product, s, activeColor) ?? 0) > 0
-  const chosenSize =
-    size && sizeInStock(size)
+  const chosenSize = isGift
+    ? ''
+    : size && sizeInStock(size)
       ? size
-      : (product.sizes.find(sizeInStock) ?? product.sizes[0])
+      : (product.sizes.find(sizeInStock) ?? product.sizes[0] ?? '')
   /** Pieces left for the exact combination the customer is looking at. */
   const pickedQty = byVariant ? (variantQty(product, chosenSize, activeColor) ?? 0) : null
   const sizeUnavailable = (s: string) =>
@@ -197,7 +201,9 @@ export function ProductPage() {
                 )}
               </div>
 
-              {(() => {
+              {isGift ? (
+                <p className="pdp__stock">🎁 {g.vat}</p>
+              ) : (() => {
                 // With a size × colour matrix the number shown follows the
                 // exact combination the customer has selected.
                 const shown = byVariant ? pickedQty : product.stockQty
@@ -225,6 +231,19 @@ export function ProductPage() {
 
               <p className="pdp__desc">{productDescription(product.id, product.description)}</p>
 
+              {isGift && (
+                <div className="pdp__gift">
+                  <strong>🎁 {g.badge}</strong>
+                  <p>{g.how}</p>
+                  <ul>
+                    <li>{g.noShipping}</li>
+                    <li>{g.emailNote}</li>
+                    <li>{g.cardOnly}</li>
+                  </ul>
+                </div>
+              )}
+
+              {!isGift && (
               <div className="pdp__option">
                 <span className="pdp__option-label">
                   {p.colour} — <strong>{colorName(product.colors[color].name)}</strong>
@@ -251,7 +270,9 @@ export function ProductPage() {
                   })}
                 </div>
               </div>
+              )}
 
+              {!isGift && (
               <div className="pdp__option">
                 <span className="pdp__option-label">{p.size}</span>
                 <div className="pdp__sizes">
@@ -273,6 +294,7 @@ export function ProductPage() {
                   })}
                 </div>
               </div>
+              )}
 
               <div className="pdp__buy">
                 <div className="qty qty--lg">
@@ -308,9 +330,19 @@ export function ProductPage() {
               </div>
 
               <div className="pdp__assure">
-                <div><LeafIcon size={20} /><span>{productMaterial(product.id, product.material)}</span></div>
-                <div><TruckIcon size={20} /><span>{p.deliveryInfo}</span></div>
-                <div><ReturnIcon size={20} /><span>{p.returnsInfo}</span></div>
+                {isGift ? (
+                  <>
+                    <div><LeafIcon size={20} /><span>{g.vat}</span></div>
+                    <div><TruckIcon size={20} /><span>{g.noShipping}</span></div>
+                    <div><ReturnIcon size={20} /><span>{g.emailNote}</span></div>
+                  </>
+                ) : (
+                  <>
+                    <div><LeafIcon size={20} /><span>{productMaterial(product.id, product.material)}</span></div>
+                    <div><TruckIcon size={20} /><span>{p.deliveryInfo}</span></div>
+                    <div><ReturnIcon size={20} /><span>{p.returnsInfo}</span></div>
+                  </>
+                )}
               </div>
             </div>
           </div>
