@@ -115,6 +115,13 @@ export default async function handler(req, res) {
     const promo = await applyPromo({ subtotalCzk, shippingCfg, discountCode, giftCode, method })
     const paidByGift = promo.totalCzk === 0
 
+    // Prices are VAT-inclusive, so the tax sits inside whatever remains after
+    // the discount and the voucher have been deducted.
+    const vatPayer = shippingCfg.vat_payer !== false
+    const vatRate = vatPayer ? Number(shippingCfg.vat_rate ?? 21) : 0
+    const vatCzk =
+      vatRate > 0 ? Math.round(promo.totalCzk - promo.totalCzk / (1 + vatRate / 100)) : 0
+
     const orderPayload = {
       customer_name: customer.name,
       email: customer.email,
@@ -132,6 +139,9 @@ export default async function handler(req, res) {
       discount_czk: promo.discountCzk,
       gift_card_code: promo.gift?.code || null,
       gift_card_czk: promo.giftCzk,
+      vat_rate: vatRate || null,
+      vat_czk: vatCzk,
+      vat_base_czk: promo.totalCzk - vatCzk,
       shipping_method: method?.code || null,
       shipping_name: method?.name_cs || null,
       pickup_point_id: String(pickupPointId || '').slice(0, 60) || null,
@@ -151,8 +161,10 @@ export default async function handler(req, res) {
     const orderNumber = await orderRes.json()
 
     // Redeem the codes now — the order is definitely placed.
-    if (promo.discount) await redeemDiscount(promo.discount.code)
-    if (promo.gift && promo.giftCzk > 0) await redeemGiftCard(promo.gift.code, promo.giftCzk)
+    if (promo.discount)
+      await redeemDiscount(promo.discount.code, { orderNumber, amountCzk: promo.discountCzk })
+    if (promo.gift && promo.giftCzk > 0)
+      await redeemGiftCard(promo.gift.code, promo.giftCzk, { orderNumber })
 
     // Fully covered by a gift card → mark as paid right away.
     if (paidByGift) {

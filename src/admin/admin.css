@@ -1158,3 +1158,21 @@
   line-height: 1.5;
   color: #64748b;
 }
+
+/* ---- Order totals with discounts and VAT --------------------------- */
+.admin__order-totals {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+.admin__order-totals .admin__minus {
+  color: #15803d;
+  font-weight: 600;
+}
+.admin__switch--row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 12px;
+}

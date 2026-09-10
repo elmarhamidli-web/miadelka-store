@@ -216,7 +216,14 @@ export function CheckoutPage() {
           }),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || 'checkout failed')
+        if (!res.ok) {
+          if (data.error === 'amount_too_small') {
+            setBusy(false)
+            setError(c.errorMinimum)
+            return
+          }
+          throw new Error(data.error || 'checkout failed')
+        }
         track('order_placed')
         if (data.paidByGift && data.orderNumber != null) {
           // Fully covered by the gift card — no card payment needed.

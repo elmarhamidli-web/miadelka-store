@@ -192,6 +192,7 @@ export interface Dictionary {
       successSub: string
       backToShop: string
       errorGeneric: string
+      errorMinimum: string
       emptyCart: string
       promoTitle: string
       promoPlaceholder: string

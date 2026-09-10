@@ -115,9 +115,15 @@ export default async function handler(req, res) {
           // Redeem discount code / gift card exactly once, after real payment.
           if (!alreadyHandled) {
             try {
-              if (order.discount_code) await redeemDiscount(order.discount_code)
+              if (order.discount_code)
+                await redeemDiscount(order.discount_code, {
+                  orderNumber: order.order_number,
+                  amountCzk: Number(order.discount_czk) || 0,
+                })
               if (order.gift_card_code && Number(order.gift_card_czk) > 0)
-                await redeemGiftCard(order.gift_card_code, Number(order.gift_card_czk))
+                await redeemGiftCard(order.gift_card_code, Number(order.gift_card_czk), {
+                  orderNumber: order.order_number,
+                })
             } catch (err) {
               console.error('Promo redemption failed:', err)
             }

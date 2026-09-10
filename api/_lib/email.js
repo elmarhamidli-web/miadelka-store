@@ -63,6 +63,18 @@ function itemsTable(order) {
         <td align="right" style="padding:10px 0;color:#1f9d63;">−${czk(order.gift_card_czk)}</td>
       </tr>`
       : ''
+  // The total is VAT-inclusive, so the tax is shown as an informative split
+  // of the amount already paid — never added on top.
+  const vatRow =
+    Number(order.vat_czk) > 0
+      ? `<tr>
+        <td colspan="2" style="padding:6px 0 0;color:#8b7d8b;font-size:13px;">
+          Základ daně ${czk(order.vat_base_czk)} · DPH ${Number(order.vat_rate)} % ${czk(
+            order.vat_czk,
+          )} (v ceně)
+        </td>
+      </tr>`
+      : ''
   const shipLabel = order.shipping_name ? `Doprava — ${order.shipping_name}` : 'Doprava'
   const pickupRow = order.pickup_point_name
     ? `<tr><td colspan="2" style="padding:2px 0 10px;color:#6b5d6b;font-size:13px;">📍 Výdejní místo: <strong>${order.pickup_point_name}</strong></td></tr>`
@@ -81,6 +93,7 @@ function itemsTable(order) {
         <td style="padding:10px 0;font-size:17px;"><strong>Celkem</strong></td>
         <td align="right" style="padding:10px 0;font-size:17px;"><strong>${czk(order.total_czk)}</strong></td>
       </tr>
+      ${vatRow}
     </table>`
 }
 

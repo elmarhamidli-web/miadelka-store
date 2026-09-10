@@ -60,6 +60,10 @@ export interface SiteSettings {
   packeta_api_key?: string
   /** Product shown in the big card on the homepage hero (admin choice). */
   hero_product_id?: string
+  /** Shop is registered for VAT — invoices then show the DPH breakdown. */
+  vat_payer?: boolean
+  /** DPH rate in percent (Czech standard rate is 21). */
+  vat_rate?: number
 }
 
 export interface Promotion {
@@ -225,6 +229,8 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           free_over_czk: Number(s.free_over_czk ?? DEFAULT_SETTINGS.free_over_czk),
           packeta_api_key: (s as { packeta_api_key?: string }).packeta_api_key || undefined,
           hero_product_id: (s as { hero_product_id?: string }).hero_product_id || undefined,
+          vat_payer: (s as { vat_payer?: boolean }).vat_payer !== false,
+          vat_rate: Number((s as { vat_rate?: number }).vat_rate ?? 21),
         })
       }
     }

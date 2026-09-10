@@ -73,6 +73,53 @@ function stripeProductFields(row) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* DPH                                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Cached Stripe tax-rate ids, keyed by percentage. */
+const vatRateCache = new Map()
+
+/**
+ * Stripe tax rate for Czech VAT, created on first use and reused after.
+ * `inclusive: true` — shop prices are final consumer prices, so the tax is
+ * carved OUT of the amount instead of being added on top.
+ */
+async function getVatRateId(percent) {
+  const key = String(percent)
+  if (vatRateCache.has(key)) return vatRateCache.get(key)
+  const marker = `los_vat_${key}`
+  try {
+    const list = await stripe.taxRates.list({ active: true, limit: 100 })
+    const found = list.data.find((r) => r.metadata?.los_key === marker)
+    if (found) {
+      vatRateCache.set(key, found.id)
+      return found.id
+    }
+  } catch (err) {
+    console.error('Tax rate lookup failed:', err.message)
+  }
+  const created = await stripe.taxRates.create({
+    display_name: 'DPH',
+    description: `DPH ${percent} %`,
+    percentage: Number(percent),
+    inclusive: true,
+    country: 'CZ',
+    metadata: { los_key: marker },
+  })
+  vatRateCache.set(key, created.id)
+  return created.id
+}
+
+/** Splits a VAT-inclusive amount into net base and tax (both CZK, rounded). */
+function splitVat(totalCzk, percent) {
+  const total = Math.round(Number(totalCzk) || 0)
+  const rate = Number(percent) || 0
+  if (!(total > 0) || !(rate > 0)) return { baseCzk: total, vatCzk: 0 }
+  const vatCzk = Math.round(total - total / (1 + rate / 100))
+  return { baseCzk: total - vatCzk, vatCzk }
+}
+
 /** True when Stripe's copy differs from ours and needs updating. */
 function needsSync(existing, fields) {
   if (existing.name !== fields.name) return true
@@ -247,6 +294,10 @@ export default async function handler(req, res) {
     // 2. Shipping from settings + discount/gift card validation.
     const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
+    // DPH is opt-in (the shop may not be a VAT payer) and the rate is editable
+    // in the admin — never hard-coded into the invoice.
+    const vatPayer = shippingCfg.vat_payer !== false
+    const vatRate = vatPayer ? Number(shippingCfg.vat_rate ?? 21) : 0
     const method = giftOnly ? null : await getShippingMethod(shippingMethod)
     if (method && method.kind === 'pickup' && !String(pickupPointName || '').trim()) {
       res.status(400).json({ error: 'Pickup point required' })
@@ -261,16 +312,22 @@ export default async function handler(req, res) {
       freeShipping: giftOnly,
     })
     const { shippingCzk } = promo
-    const shippingFree = shippingCzk === 0
     const paidByGift = promo.totalCzk === 0
 
-    // Stripe coupons only reduce line items (not shipping) — when a card
-    // payment remains, cap the gift amount at the discounted items total.
-    let giftCzk = promo.giftCzk
-    let totalCzk = promo.totalCzk
-    if (!paidByGift && promo.gift) {
-      giftCzk = Math.min(promo.gift.balanceCzk, subtotalCzk - promo.discountCzk)
-      totalCzk = subtotalCzk - promo.discountCzk - giftCzk + shippingCzk
+    // Postage is a line item (see below), so a coupon can reduce it too —
+    // the amounts from applyPromo are used exactly as computed.
+    const giftCzk = promo.giftCzk
+    const totalCzk = promo.totalCzk
+
+    // The customer pays a VAT-inclusive total, so the tax is carved out of
+    // whatever is left AFTER the discount and the voucher.
+    const { baseCzk: vatBaseCzk, vatCzk } = splitVat(totalCzk, vatRate)
+
+    // Stripe cannot charge a card for less than about 15 Kč. Better to say so
+    // than to create an order that can never be paid.
+    if (!paidByGift && totalCzk > 0 && totalCzk < 15) {
+      res.status(400).json({ error: 'amount_too_small', minimumCzk: 15 })
+      return
     }
 
     // 3. Create the order (status stays "new" until the webhook marks it paid).
@@ -295,6 +352,9 @@ export default async function handler(req, res) {
       discount_czk: promo.discountCzk,
       gift_card_code: giftCzk > 0 ? promo.gift?.code || null : null,
       gift_card_czk: giftCzk,
+      vat_rate: vatRate || null,
+      vat_czk: vatCzk,
+      vat_base_czk: vatBaseCzk,
       shipping_method: method?.code || null,
       shipping_name: method?.name_cs || null,
       pickup_point_id: String(pickupPointId || '').slice(0, 60) || null,
@@ -314,8 +374,13 @@ export default async function handler(req, res) {
 
     // 3b. Fully covered by the gift card → no Stripe payment needed.
     if (paidByGift) {
-      if (promo.discount) await redeemDiscount(promo.discount.code)
-      if (promo.gift && promo.giftCzk > 0) await redeemGiftCard(promo.gift.code, promo.giftCzk)
+      if (promo.discount)
+        await redeemDiscount(promo.discount.code, {
+          orderNumber,
+          amountCzk: promo.discountCzk,
+        })
+      if (promo.gift && promo.giftCzk > 0)
+        await redeemGiftCard(promo.gift.code, promo.giftCzk, { orderNumber })
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
       if (serviceKey) {
         await fetch(`${SUPABASE_URL}/rest/v1/orders?order_number=eq.${orderNumber}`, {
@@ -348,12 +413,16 @@ export default async function handler(req, res) {
     }
 
     // 4. Build line items with synced Stripe products.
+    const vatRateId = vatRate > 0 ? await getVatRateId(vatRate) : null
+    const taxRates = vatRateId ? [vatRateId] : undefined
+
     const lineItems = []
     for (const item of orderItems) {
       const row = byId[item.id]
       const stripeProductId = await getOrCreateStripeProduct(row)
       lineItems.push({
         quantity: item.qty,
+        tax_rates: taxRates,
         price_data: {
           currency: 'czk',
           unit_amount: Math.round(item.price_czk * 100),
@@ -366,20 +435,57 @@ export default async function handler(req, res) {
       })
     }
 
+    // Postage rides along as a normal line item instead of a Stripe shipping
+    // option. Two reasons: it can carry the DPH rate (a shipping_rate cannot),
+    // and a discount or voucher may then reduce it like anything else.
+    if (!giftOnly && shippingCzk > 0) {
+      lineItems.push({
+        quantity: 1,
+        tax_rates: taxRates,
+        price_data: {
+          currency: 'czk',
+          unit_amount: Math.round(shippingCzk * 100),
+          tax_behavior: 'inclusive',
+          product_data: {
+            name: `Doprava — ${method?.name_cs || 'přeprava'}`,
+            description:
+              method?.kind === 'pickup' && pickupPointName
+                ? String(pickupPointName).slice(0, 200)
+                : undefined,
+          },
+        },
+      })
+    }
+
     // 5. Discount + gift card as a one-off Stripe coupon (reduces line items).
+    // Named with the real codes, so the faktura shows exactly what was used,
+    // e.g. "Dárkový poukaz GIFT-AB12-CD34 −1 000 Kč". Stripe allows a single
+    // discount per session, so a discount + voucher combination is one line
+    // naming both; the split is stored on the order and in code_redemptions.
     const reductionCzk = promo.discountCzk + giftCzk
     let discounts
     if (reductionCzk > 0) {
+      const parts = []
+      if (giftCzk > 0 && promo.gift) parts.push(`Poukaz ${promo.gift.code}`)
+      if (promo.discount) parts.push(`sleva ${promo.discount.code}`)
+      // Never ask for more than the line items actually add up to — Stripe
+      // rejects a coupon larger than the order.
+      const lineSum = lineItems.reduce(
+        (sum, li) => sum + li.price_data.unit_amount * li.quantity,
+        0,
+      )
       const coupon = await stripe.coupons.create({
-        amount_off: Math.round(Math.min(reductionCzk, subtotalCzk) * 100),
+        amount_off: Math.min(Math.round(reductionCzk * 100), lineSum),
         currency: 'czk',
         duration: 'once',
-        name:
-          promo.discount && giftCzk > 0
-            ? 'Sleva + dárkový poukaz'
-            : promo.discount
-              ? `Sleva ${promo.discount.code}`
-              : 'Dárkový poukaz',
+        name: parts.join(' + ').slice(0, 40) || 'Sleva',
+        metadata: {
+          order_number: String(orderNumber),
+          discount_code: promo.discount?.code || '',
+          discount_czk: String(promo.discountCzk),
+          gift_code: promo.gift?.code || '',
+          gift_czk: String(giftCzk),
+        },
       })
       discounts = [{ coupon: coupon.id }]
     }
@@ -393,20 +499,6 @@ export default async function handler(req, res) {
       discounts,
       customer: stripeCustomerId,
       locale: locale === 'cs' ? 'cs' : 'auto',
-      shipping_options: giftOnly
-        ? undefined
-        : [
-            {
-              shipping_rate_data: {
-                type: 'fixed_amount',
-                display_name: shippingFree
-                  ? 'Doprava zdarma'
-                  : method?.name_cs || 'Doprava',
-                fixed_amount: { amount: shippingCzk * 100, currency: 'czk' },
-                tax_behavior: 'inclusive',
-              },
-            },
-          ],
       metadata: { order_number: String(orderNumber) },
       payment_intent_data: {
         metadata: { order_number: String(orderNumber) },
@@ -419,15 +511,36 @@ export default async function handler(req, res) {
       invoice_creation: {
         enabled: true,
         invoice_data: {
-          description: `Little One Store — objednávka #${orderNumber}`,
-          metadata: { order_number: String(orderNumber) },
+          description:
+            `Little One Store — objednávka #${orderNumber}` +
+            (promo.discount ? ` · sleva ${promo.discount.code} −${promo.discountCzk} Kč` : '') +
+            (giftCzk > 0 && promo.gift
+              ? ` · dárkový poukaz ${promo.gift.code} −${giftCzk} Kč`
+              : ''),
+          metadata: {
+            order_number: String(orderNumber),
+            discount_code: promo.discount?.code || '',
+            discount_czk: String(promo.discountCzk),
+            gift_code: promo.gift?.code || '',
+            gift_czk: String(giftCzk),
+            vat_rate: String(vatRate),
+            vat_czk: String(vatCzk),
+            vat_base_czk: String(vatBaseCzk),
+          },
           custom_fields: [
             { name: 'Prodávající', value: 'Azruk s.r.o.' },
             { name: 'IČO', value: '14420333' },
             { name: 'DIČ', value: 'CZ14420333' },
-          ],
+          ].concat(
+            giftCzk > 0 && promo.gift
+              ? [{ name: 'Dárkový poukaz', value: promo.gift.code }]
+              : [],
+          ),
           footer:
-            'Všechny uvedené částky jsou konečné, včetně DPH.\n' +
+            (vatRate > 0
+              ? `Ceny jsou uvedeny včetně DPH ${vatRate} %. Sleva i dárkový poukaz snižují ` +
+                `základ daně — DPH se počítá až z částky po jejich odečtení.\n`
+              : 'Všechny uvedené částky jsou konečné.\n') +
             (giftOnly
               ? 'Dárkový poukaz byl doručen elektronicky na e-mail kupujícího.\n'
               : '') +

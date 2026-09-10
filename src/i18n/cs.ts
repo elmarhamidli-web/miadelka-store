@@ -224,6 +224,7 @@ export const cs: Dictionary = {
       successSub: 'Číslo objednávky: {number}. Potvrzení a platební údaje vám zašleme na e-mail.',
       backToShop: 'Zpět do obchodu',
       errorGeneric: 'Objednávku se nepodařilo odeslat. Zkuste to prosím znovu.',
+      errorMinimum: 'Částka k úhradě kartou je příliš nízká (minimum je 15 Kč). Přidejte prosím do košíku další zboží.',
       emptyCart: 'Váš košík je prázdný.',
       promoTitle: 'Slevový kód / dárkový poukaz',
       promoPlaceholder: 'Zadejte kód',

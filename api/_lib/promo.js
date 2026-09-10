@@ -75,8 +75,21 @@ export async function classifyCode(code, subtotalCzk) {
   return { kind: 'unknown', ok: false, error: 'invalid' }
 }
 
+/** Write one line into the redemption ledger (never blocks the order). */
+async function logRedemption(entry) {
+  try {
+    await sb('code_redemptions', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify(entry),
+    })
+  } catch (err) {
+    console.error('logRedemption failed:', err)
+  }
+}
+
 /** Increment a discount code's use counter (best-effort). */
-export async function redeemDiscount(code) {
+export async function redeemDiscount(code, { orderNumber = null, amountCzk = 0 } = {}) {
   const c = normalizeCode(code)
   if (!c) return
   try {
@@ -87,24 +100,42 @@ export async function redeemDiscount(code) {
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({ used_count: Number(rows[0].used_count) + 1 }),
     })
+    await logRedemption({
+      kind: 'discount',
+      code: c,
+      order_number: orderNumber,
+      amount_czk: Math.round(Number(amountCzk) || 0),
+    })
   } catch (err) {
     console.error('redeemDiscount failed:', err)
   }
 }
 
-/** Deduct an amount (CZK) from a gift card balance (best-effort, never below 0). */
-export async function redeemGiftCard(code, amountCzk) {
+/**
+ * Deduct an amount (CZK) from a gift card balance (never below 0) and record
+ * the movement, so every use of a voucher is traceable in the database.
+ */
+export async function redeemGiftCard(code, amountCzk, { orderNumber = null } = {}) {
   const c = normalizeCode(code)
   const amount = Math.round(Number(amountCzk))
   if (!c || !(amount > 0)) return
   try {
     const rows = await sb(`gift_cards?code=eq.${encodeURIComponent(c)}&select=balance_czk`)
     if (!rows?.[0]) return
-    const newBalance = Math.max(0, Math.round(Number(rows[0].balance_czk)) - amount)
+    const before = Math.round(Number(rows[0].balance_czk))
+    const newBalance = Math.max(0, before - amount)
     await sb(`gift_cards?code=eq.${encodeURIComponent(c)}`, {
       method: 'PATCH',
       headers: { Prefer: 'return=minimal' },
       body: JSON.stringify({ balance_czk: newBalance }),
+    })
+    await logRedemption({
+      kind: 'gift',
+      code: c,
+      order_number: orderNumber,
+      amount_czk: before - newBalance,
+      balance_before: before,
+      balance_after: newBalance,
     })
   } catch (err) {
     console.error('redeemGiftCard failed:', err)

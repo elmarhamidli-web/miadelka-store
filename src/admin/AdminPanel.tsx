@@ -543,6 +543,13 @@ interface OrderRow {
   subtotal_czk: number
   shipping_czk: number
   total_czk: number
+  discount_code?: string | null
+  discount_czk?: number | null
+  gift_card_code?: string | null
+  gift_card_czk?: number | null
+  vat_rate?: number | null
+  vat_czk?: number | null
+  vat_base_czk?: number | null
   payment_method: string
   tracking_number?: string | null
   carrier?: string | null
@@ -812,9 +819,26 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                       </li>
                     ))}
                   </ul>
-                  <p>
-                    Mezisoučet: {o.subtotal_czk} Kč · Doprava: {o.shipping_czk} Kč ·{' '}
+                  <p className="admin__order-totals">
+                    <span>Mezisoučet: {o.subtotal_czk} Kč</span>
+                    {Number(o.discount_czk) > 0 && (
+                      <span className="admin__minus">
+                        Sleva {o.discount_code} −{o.discount_czk} Kč
+                      </span>
+                    )}
+                    <span>Doprava: {o.shipping_czk} Kč</span>
+                    {Number(o.gift_card_czk) > 0 && (
+                      <span className="admin__minus">
+                        🎁 Dárkový poukaz {o.gift_card_code} −{o.gift_card_czk} Kč
+                      </span>
+                    )}
                     <strong>Celkem: {o.total_czk} Kč</strong>
+                    {Number(o.vat_czk) > 0 && (
+                      <span className="admin__muted admin__small">
+                        z toho základ daně {o.vat_base_czk} Kč · DPH {o.vat_rate} %{' '}
+                        {o.vat_czk} Kč
+                      </span>
+                    )}
                   </p>
                   {(o.invoice_pdf || o.invoice_url) && (
                     <p>
@@ -2360,9 +2384,21 @@ const genCode = (prefix: string, blocks = 2) => {
   return `${prefix}${Array.from({ length: blocks }, block).join('-')}`
 }
 
+interface RedemptionRow {
+  id: string
+  kind: 'discount' | 'gift'
+  code: string
+  order_number: number | null
+  amount_czk: number
+  balance_before: number | null
+  balance_after: number | null
+  created_at: string
+}
+
 function PromosView({ notify }: { notify: (m: string) => void }) {
   const [codes, setCodes] = useState<DiscountRow[]>([])
   const [gifts, setGifts] = useState<GiftRow[]>([])
+  const [uses, setUses] = useState<RedemptionRow[]>([])
   const [loading, setLoading] = useState(true)
 
   // New discount form
@@ -2379,12 +2415,18 @@ function PromosView({ notify }: { notify: (m: string) => void }) {
   const [gNote, setGNote] = useState('')
 
   const load = useCallback(async () => {
-    const [d, g] = await Promise.all([
+    const [d, g, u] = await Promise.all([
       supabase!.from('discount_codes').select('*').order('created_at', { ascending: false }),
       supabase!.from('gift_cards').select('*').order('created_at', { ascending: false }),
+      supabase!
+        .from('code_redemptions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200),
     ])
     if (d.data) setCodes(d.data as DiscountRow[])
     if (g.data) setGifts(g.data as GiftRow[])
+    if (u.data) setUses(u.data as RedemptionRow[])
     setLoading(false)
   }, [])
 
@@ -2700,6 +2742,62 @@ function PromosView({ notify }: { notify: (m: string) => void }) {
             </table>
           )}
         </div>
+      </div>
+
+      {/* -------- Redemption ledger -------- */}
+      <div className="admin__card" style={{ marginTop: 18 }}>
+        <h2 className="admin__chart-title">Historie uplatnění kódů</h2>
+        <p className="admin__muted admin__small">
+          Každé použití slevového kódu i dárkového poukazu, tak jak je uloženo v databázi.
+          U poukazu je vidět, kolik z něj ubylo a kolik zbývá.
+        </p>
+        {uses.length === 0 ? (
+          <p className="admin__muted">Zatím nebyl uplatněn žádný kód.</p>
+        ) : (
+          <table className="admin__table">
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Typ</th>
+                <th>Kód</th>
+                <th>Objednávka</th>
+                <th>Uplatněno</th>
+                <th>Zůstatek</th>
+              </tr>
+            </thead>
+            <tbody>
+              {uses.map((u) => (
+                <tr key={u.id}>
+                  <td>{new Date(u.created_at).toLocaleString('cs-CZ')}</td>
+                  <td>{u.kind === 'gift' ? '🎁 Poukaz' : '🏷️ Sleva'}</td>
+                  <td>
+                    <button className="admin__code" title="Kopírovat" onClick={() => copy(u.code)}>
+                      {u.code}
+                    </button>
+                  </td>
+                  <td>{u.order_number ? `#${u.order_number}` : '—'}</td>
+                  <td>
+                    <strong>−{Number(u.amount_czk).toLocaleString('cs-CZ')} Kč</strong>
+                  </td>
+                  <td>
+                    {u.balance_after != null ? (
+                      <>
+                        {Number(u.balance_after).toLocaleString('cs-CZ')} Kč
+                        {u.balance_before != null && (
+                          <div className="admin__muted admin__small">
+                            před: {Number(u.balance_before).toLocaleString('cs-CZ')} Kč
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </main>
   )
@@ -3220,6 +3318,44 @@ function SettingsView({
         </label>
         <button className="admin__btn admin__btn--primary" onClick={() => void save()} disabled={busy}>
           Uložit nastavení
+        </button>
+      </div>
+
+      {/* -------- DPH on invoices -------- */}
+      <div className="admin__card admin__card--narrow" style={{ marginTop: 18 }}>
+        <h2>DPH na fakturách</h2>
+        <p className="admin__muted admin__small">
+          Ceny na webu jsou vždy konečné — DPH je v nich obsažena, nikdy se nepřičítá navrch.
+          Sleva i dárkový poukaz snižují základ daně, takže DPH se počítá až z částky,
+          kterou zákazník opravdu zaplatí.
+        </p>
+        <label className="admin__switch admin__switch--row">
+          <input
+            type="checkbox"
+            checked={settings.vat_payer !== false}
+            onChange={(e) => setSettings((s) => ({ ...s, vat_payer: e.target.checked }))}
+          />
+          <span>Jsme plátce DPH — rozepsat daň na faktuře</span>
+        </label>
+        {settings.vat_payer !== false && (
+          <label>
+            Sazba DPH (%)
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step="0.5"
+              value={settings.vat_rate ?? 21}
+              onChange={(e) => setSettings((s) => ({ ...s, vat_rate: Number(e.target.value) }))}
+            />
+          </label>
+        )}
+        <p className="admin__muted admin__small">
+          Základní sazba v ČR je 21 %. Pokud nejste plátce DPH, přepínač vypněte — na faktuře
+          se pak žádná daň nerozepisuje.
+        </p>
+        <button className="admin__btn admin__btn--primary" onClick={() => void save()} disabled={busy}>
+          Uložit
         </button>
       </div>
 

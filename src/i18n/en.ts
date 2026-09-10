@@ -224,6 +224,7 @@ export const en: Dictionary = {
       successSub: 'Order number: {number}. A confirmation with payment details is on its way to your e-mail.',
       backToShop: 'Back to shop',
       errorGeneric: 'We could not place the order. Please try again.',
+      errorMinimum: 'The amount left to pay by card is too low (minimum 15 Kč). Please add something else to the basket.',
       emptyCart: 'Your cart is empty.',
       promoTitle: 'Discount code / gift card',
       promoPlaceholder: 'Enter code',
