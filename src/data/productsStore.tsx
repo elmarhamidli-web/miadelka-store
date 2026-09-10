@@ -90,7 +90,14 @@ export const SEASONS: { id: string; label: string }[] = [
   { id: 'winter', label: 'Zima' },
 ]
 
-export const DEFAULT_SETTINGS: SiteSettings = { shipping_czk: 90, free_over_czk: 2000 }
+/** Where customers collect an order unless the admin overrides it. */
+export const DEFAULT_PICKUP_ADDRESS = 'Hviezdoslavova 545/41, 627 00 Brno'
+
+export const DEFAULT_SETTINGS: SiteSettings = {
+  shipping_czk: 90,
+  free_over_czk: 2000,
+  pickup_address: DEFAULT_PICKUP_ADDRESS,
+}
 
 const CZK_RATE = 24
 
@@ -236,7 +243,8 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
           hero_product_id: (s as { hero_product_id?: string }).hero_product_id || undefined,
           vat_payer: (s as { vat_payer?: boolean }).vat_payer !== false,
           vat_rate: Number((s as { vat_rate?: number }).vat_rate ?? 21),
-          pickup_address: (s as { pickup_address?: string }).pickup_address || undefined,
+          pickup_address:
+            (s as { pickup_address?: string }).pickup_address || DEFAULT_PICKUP_ADDRESS,
         })
       }
     }

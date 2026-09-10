@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '../context/StoreContext'
 import { useI18n } from '../i18n'
-import { useProducts } from '../data/productsStore'
+import { DEFAULT_PICKUP_ADDRESS, useProducts } from '../data/productsStore'
 import { supabase } from '../lib/supabase'
 import { track } from '../lib/analytics'
 import { fadeUp } from '../lib/motion'
@@ -422,8 +422,8 @@ export function CheckoutPage() {
 
                 {method?.kind === 'personal' && (
                   <p className="checkout__gift-note">
-                    🏪 {dict.ui.gift.personalPickup}
-                    {settings.pickup_address ? ` ${settings.pickup_address}` : ''}
+                    🏪 {dict.ui.gift.personalPickup}{' '}
+                    <strong>{settings.pickup_address || DEFAULT_PICKUP_ADDRESS}</strong>
                   </p>
                 )}
 

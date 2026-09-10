@@ -359,24 +359,123 @@ export async function sendWelcomeEmail(email, code) {
  * Delivers the purchased voucher codes. `cards` is [{ code, valueCzk }].
  * Sent only after the payment really went through.
  */
+/**
+ * The voucher itself, drawn as an e-mail-safe "card": tables and inline
+ * styles only, no flexbox and no background-image — Outlook and Gmail both
+ * strip those. Returns the full HTML so it can also be previewed offline.
+ */
+export function giftCardEmailHtml(order, cards) {
+  const list = cards || []
+  const total = list.reduce((sum, c) => sum + Number(c.valueCzk || 0), 0)
+  const many = list.length > 1
+
+  const voucher = (c) => `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-collapse:separate;">
+      <tr>
+        <td style="background:#ef5f8d;border-radius:20px 20px 0 0;padding:18px 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="color:#ffffff;font-size:13px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;">
+                Dárkový poukaz
+              </td>
+              <td align="right" style="color:#ffffff;font-size:20px;line-height:1;">🎁</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="background:#fff6f9;border:1px solid #ffd6e4;border-top:0;border-radius:0 0 20px 20px;padding:26px 24px 24px;text-align:center;">
+          <div style="color:#9b8a97;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:4px;">
+            Hodnota
+          </div>
+          <div style="color:#3a2e3a;font-size:40px;line-height:1.1;font-weight:800;margin-bottom:18px;">
+            ${Number(c.valueCzk).toLocaleString('cs-CZ')}&nbsp;Kč
+          </div>
+
+          <div style="color:#9b8a97;font-size:12px;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;">
+            Kód poukazu
+          </div>
+          <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
+            <tr>
+              <td style="background:#ffffff;border:2px dashed #ef5f8d;border-radius:14px;padding:14px 26px;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:23px;font-weight:700;letter-spacing:3px;color:#3a2e3a;white-space:nowrap;">
+                ${c.code}
+              </td>
+            </tr>
+          </table>
+
+          <div style="color:#9b8a97;font-size:12px;margin-top:16px;line-height:1.5;">
+            Platí na celý sortiment · Nevyčerpaný zůstatek zůstává na poukazu
+          </div>
+        </td>
+      </tr>
+    </table>`
+
+  const step = (n, text) => `
+    <tr>
+      <td width="30" valign="top" style="padding:0 0 10px;">
+        <div style="width:22px;height:22px;border-radius:11px;background:#ffe3ec;color:#c9315e;font-size:12px;font-weight:800;text-align:center;line-height:22px;">${n}</div>
+      </td>
+      <td valign="top" style="padding:1px 0 10px;color:#6b5d6b;font-size:14px;line-height:1.55;">${text}</td>
+    </tr>`
+
+  return shell(`
+    <h1 style="font-size:23px;color:#3a2e3a;margin:0 0 8px;text-align:center;">
+      ${many ? 'Vaše dárkové poukazy jsou tu' : 'Váš dárkový poukaz je tu'} 🎁
+    </h1>
+    <p style="color:#6b5d6b;line-height:1.65;text-align:center;margin:0 0 24px;">
+      Děkujeme za nákup${
+        order.customer_name ? `, ${String(order.customer_name).split(' ')[0]}` : ''
+      }.<br/>
+      ${many ? 'Poukazy z objednávky' : 'Poukaz z objednávky'}
+      <strong>#${order.order_number}</strong> ${many ? 'najdete' : 'najdete'} níže.
+    </p>
+
+    ${list.map(voucher).join('')}
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 4px;">
+      <tr>
+        <td style="padding:0 0 12px;color:#3a2e3a;font-size:15px;font-weight:700;">
+          Jak poukaz uplatnit
+        </td>
+      </tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${step(1, 'Vyberte si na <a href="' + SITE + '" style="color:#c9315e;">littleonestore.cz</a> cokoli, co se vám líbí.')}
+      ${step(2, 'V pokladně zadejte kód do pole <strong>„Slevový kód / dárkový poukaz"</strong> a klikněte na <strong>Použít</strong>.')}
+      ${step(3, 'Hodnota se odečte z objednávky. Zbytek zůstává na poukazu na příště.')}
+    </table>
+
+    <p style="text-align:center;margin:26px 0 10px;">
+      <a href="${SITE}" style="display:inline-block;background:#ef5f8d;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;padding:14px 34px;border-radius:999px;">
+        Vybrat dárek
+      </a>
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;">
+      <tr>
+        <td style="background:#faf6f2;border-radius:14px;padding:16px 18px;color:#8b7d8b;font-size:13px;line-height:1.6;">
+          ${
+            many
+              ? `Celková hodnota poukazů: <strong style="color:#3a2e3a;">${total.toLocaleString(
+                  'cs-CZ',
+                )} Kč</strong> (částka je konečná, včetně DPH).<br/>`
+              : ''
+          }
+          Poukaz můžete darovat dál — stačí předat kód.
+          Kdyby cokoli, napište nám na
+          <a href="mailto:${NOTIFY}" style="color:#c9315e;">${NOTIFY}</a>.
+        </td>
+      </tr>
+    </table>
+  `)
+}
+
+/**
+ * Delivers the purchased voucher codes. `cards` is [{ code, valueCzk }].
+ * Sent only after the payment really went through.
+ */
 export async function sendGiftCardEmail(order, cards) {
   if (!cards || cards.length === 0) return
-  const total = cards.reduce((sum, c) => sum + Number(c.valueCzk || 0), 0)
-  const blocks = cards
-    .map(
-      (c) => `
-      <div style="background:#fff8fb;border:2px dashed #ef5f8d;border-radius:16px;padding:20px;margin:0 0 14px;text-align:center;">
-        <div style="color:#8b7d8b;font-size:13px;margin-bottom:6px;">Hodnota poukazu</div>
-        <div style="color:#3a2e3a;font-size:26px;font-weight:800;margin-bottom:12px;">${Number(
-          c.valueCzk,
-        ).toLocaleString('cs-CZ')} Kč</div>
-        <div style="font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:22px;letter-spacing:2px;color:#3a2e3a;background:#ffffff;border-radius:12px;padding:12px 18px;display:inline-block;">
-          ${c.code}
-        </div>
-      </div>`,
-    )
-    .join('')
-
   await sendEmail({
     to: order.email,
     replyTo: NOTIFY,
@@ -384,26 +483,6 @@ export async function sendGiftCardEmail(order, cards) {
       cards.length === 1
         ? `Váš dárkový poukaz na ${Number(cards[0].valueCzk).toLocaleString('cs-CZ')} Kč 🎁`
         : `Vaše dárkové poukazy (${cards.length}×) 🎁`,
-    html: shell(`
-      <h1 style="font-size:22px;color:#3a2e3a;margin:0 0 6px;">Váš dárek je připraven 🎁</h1>
-      <p style="color:#6b5d6b;line-height:1.6;">
-        Děkujeme za nákup. ${
-          cards.length === 1 ? 'Níže najdete kód poukazu' : 'Níže najdete kódy poukazů'
-        } z objednávky <strong>#${order.order_number}</strong>.
-        Kód stačí zadat v pokladně do pole „Slevový kód nebo dárkový poukaz".
-      </p>
-      ${blocks}
-      <p style="color:#6b5d6b;line-height:1.6;font-size:14px;">
-        Poukaz můžete darovat dál — stačí předat kód. Pokud útrata nevyčerpá
-        celou hodnotu, zbytek zůstává na poukazu na příští nákup.
-        Celková hodnota: <strong>${total.toLocaleString('cs-CZ')} Kč</strong>
-        (částka je konečná, včetně DPH).
-      </p>
-      <p style="text-align:center;margin:24px 0 8px;">
-        <a href="${SITE}" style="display:inline-block;background:#ef5f8d;color:#fff;text-decoration:none;font-weight:700;padding:13px 30px;border-radius:999px;">
-          Vybrat dárek
-        </a>
-      </p>
-    `),
+    html: giftCardEmailHtml(order, cards),
   })
 }

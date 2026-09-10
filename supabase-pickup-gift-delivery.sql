@@ -60,7 +60,19 @@ where not exists (
   select 1 from public.shipping_methods where kind = 'personal'
 );
 
--- 4) Kontrola
+-- 4) Výchozí adresa pro osobní odběr (jde kdykoli změnit v administraci).
+insert into public.site_settings (key, value)
+values ('shipping', jsonb_build_object('pickup_address', 'Hviezdoslavova 545/41, 627 00 Brno'))
+on conflict (key) do update
+  set value = public.site_settings.value
+            || jsonb_build_object(
+                 'pickup_address',
+                 coalesce(
+                   nullif(public.site_settings.value->>'pickup_address', ''),
+                   'Hviezdoslavova 545/41, 627 00 Brno'
+                 ));
+
+-- 5) Kontrola
 select code, name_cs, kind, price_czk, active
   from public.shipping_methods
  order by sort;

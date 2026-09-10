@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState, type FormEvent } f
 import type { Session } from '@supabase/supabase-js'
 import { supabase, STORAGE_BUCKET } from '../lib/supabase'
 import type { ProductRow, SiteSettings } from '../data/productsStore'
-import { DEFAULT_SETTINGS } from '../data/productsStore'
+import { DEFAULT_PICKUP_ADDRESS, DEFAULT_SETTINGS } from '../data/productsStore'
 import type { CategoryId, ColorOption } from '../types'
 import { CARRIERS, makeTrackingUrl } from '../lib/carriers'
 import { parseVariants, variantKey, type StockVariants } from '../lib/stock'
@@ -1160,7 +1160,7 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
     if (m.data) setRows(m.data as ShippingRow[])
     const cfg = (s.data?.value ?? {}) as { packeta_api_key?: string; pickup_address?: string }
     setPacketaKey(cfg.packeta_api_key ?? '')
-    setPickupAddress(cfg.pickup_address ?? '')
+    setPickupAddress(cfg.pickup_address ?? DEFAULT_PICKUP_ADDRESS)
     setLoading(false)
   }, [])
 
@@ -1432,6 +1432,32 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
         </form>
       </div>
 
+      {/* -------- Personal collection address -------- */}
+      <div className="admin__card" style={{ marginTop: 18 }}>
+        <h2 className="admin__chart-title">🏪 Osobní odběr — adresa výdeje</h2>
+        <p className="admin__muted admin__small">
+          Tuhle adresu uvidí zákazník v pokladně, jakmile si vybere osobní odběr. Změna se
+          projeví okamžitě, deploy není potřeba.
+        </p>
+        <div className="admin__promo-grid">
+          <label>
+            Adresa výdeje
+            <input
+              value={pickupAddress}
+              onChange={(e) => setPickupAddress(e.target.value)}
+              placeholder={DEFAULT_PICKUP_ADDRESS}
+            />
+          </label>
+        </div>
+        <button
+          className="admin__btn admin__btn--primary"
+          disabled={savingKey}
+          onClick={() => void savePacketaKey()}
+        >
+          {savingKey ? 'Ukládám…' : 'Uložit adresu'}
+        </button>
+      </div>
+
       <div className="admin__card" style={{ marginTop: 18 }}>
         <h2 className="admin__chart-title">📍 Widget Zásilkovny (výběr výdejního místa)</h2>
         <p className="admin__muted admin__small">
@@ -1440,14 +1466,6 @@ function ShippingView({ notify }: { notify: (m: string) => void }) {
           veřejná mapa a název pobočky vypíše ručně — objednávka funguje v obou případech.
         </p>
         <div className="admin__promo-grid">
-          <label>
-            Adresa pro osobní odběr
-            <input
-              value={pickupAddress}
-              onChange={(e) => setPickupAddress(e.target.value)}
-              placeholder="Hviezdoslavova 545/41, 627 00 Brno — po domluvě"
-            />
-          </label>
           <label>
             Packeta API klíč
             <input
