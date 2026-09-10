@@ -1149,3 +1149,16 @@
   gap: 10px;
   margin: 6px 0 12px;
 }
+
+/* ---- Invoice actions on an order ----------------------------------- */
+.admin__invoice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.admin__invoice-hint {
+  flex-basis: 100%;
+  line-height: 1.5;
+}

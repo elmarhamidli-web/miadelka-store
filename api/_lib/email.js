@@ -116,6 +116,22 @@ function shell(inner) {
 
 /** Confirmation to the customer after placing a COD/bank-transfer order. */
 export function customerOrderEmail(order) {
+  const invoiceLink = order.invoice_pdf || order.invoice_url
+  const proforma = order.invoice_status === 'proforma'
+  const invoiceBlock = invoiceLink
+    ? `<p style="text-align:center;margin:22px 0 6px;">
+         <a href="${invoiceLink}" style="display:inline-block;background:#fff;border:2px solid #ef5f8d;color:#ef5f8d;text-decoration:none;font-weight:700;padding:11px 26px;border-radius:999px;">
+           📄 ${proforma ? 'Zálohová faktura (PDF)' : 'Faktura (PDF)'}
+         </a>
+       </p>${
+         proforma
+           ? `<p style="text-align:center;color:#8b7d8b;font-size:13px;margin:0 0 6px;line-height:1.6;">
+                Zálohovou fakturu můžete zaplatit online odkazem ve faktuře — nebo prostě
+                zaplatit až při převzetí. Daňový doklad vám pošleme po úhradě.
+              </p>`
+           : ''
+       }`
+    : ''
   return {
     to: order.email,
     subject: `Potvrzení objednávky #${order.order_number} — Little One Store`,
@@ -134,6 +150,7 @@ export function customerOrderEmail(order) {
       <p style="color:#6b5d6b;line-height:1.6;">
         <strong>Způsob platby:</strong> dobírka / bankovní převod
       </p>
+      ${invoiceBlock}
     `),
   }
 }
@@ -142,12 +159,20 @@ export function customerOrderEmail(order) {
 export function customerPaidEmail(order) {
   // Stripe invoice (PDF / hosted page) when available.
   const invoiceLink = order.invoice_pdf || order.invoice_url
+  const proforma = order.invoice_status === 'proforma'
   const invoiceBlock = invoiceLink
     ? `<p style="text-align:center;margin:22px 0 6px;">
          <a href="${invoiceLink}" style="display:inline-block;background:#fff;border:2px solid #ef5f8d;color:#ef5f8d;text-decoration:none;font-weight:700;padding:11px 26px;border-radius:999px;">
-           📄 Stáhnout fakturu (PDF)
+           📄 ${proforma ? 'Zálohová faktura (PDF)' : 'Stáhnout fakturu (PDF)'}
          </a>
-       </p>`
+       </p>${
+         proforma
+           ? `<p style="text-align:center;color:#8b7d8b;font-size:13px;margin:0 0 6px;line-height:1.6;">
+                Zálohovou fakturu můžete zaplatit online — nebo prostě zaplaťte
+                při převzetí. Daňový doklad vám pošleme po úhradě.
+              </p>`
+           : ''
+       }`
     : ''
   return {
     to: order.email,
@@ -484,5 +509,68 @@ export async function sendGiftCardEmail(order, cards) {
         ? `Váš dárkový poukaz na ${Number(cards[0].valueCzk).toLocaleString('cs-CZ')} Kč 🎁`
         : `Vaše dárkové poukazy (${cards.length}×) 🎁`,
     html: giftCardEmailHtml(order, cards),
+  })
+}
+
+/* ------------------------------------------------------------------ */
+/* Invoice sent on its own                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Sends the invoice as a standalone e-mail. Used for the final faktura once
+ * a cash-on-delivery order has been paid, and for re-sending on request.
+ */
+export async function sendInvoiceEmail(order, { proforma = false } = {}) {
+  const link = order.invoice_pdf || order.invoice_url
+  if (!link || !order.email) return
+  const title = proforma ? 'Zálohová faktura' : 'Faktura'
+  await sendEmail({
+    to: order.email,
+    replyTo: NOTIFY,
+    subject: `${title} k objednávce #${order.order_number} — Little One Store`,
+    html: shell(`
+      <h1 style="font-size:22px;color:#3a2e3a;margin:0 0 8px;">
+        ${proforma ? 'Zálohová faktura je připravená' : 'Faktura je připravená'} 📄
+      </h1>
+      <p style="color:#6b5d6b;line-height:1.65;margin:0 0 6px;">
+        ${
+          proforma
+            ? `Posíláme zálohovou fakturu k objednávce <strong>#${order.order_number}</strong>.
+               Můžete ji zaplatit online přes odkaz ve faktuře, nebo zaplatit až při
+               převzetí zásilky. Daňový doklad vám pošleme, jakmile platbu přijmeme.`
+            : `Posíláme fakturu k objednávce <strong>#${order.order_number}</strong>.
+               Děkujeme za nákup a za platbu.`
+        }
+      </p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 6px;">
+        <tr>
+          <td style="background:#faf6f2;border-radius:14px;padding:16px 18px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="color:#8b7d8b;font-size:14px;">Objednávka</td>
+                <td align="right" style="color:#3a2e3a;font-size:14px;font-weight:700;">#${
+                  order.order_number
+                }</td>
+              </tr>
+              <tr>
+                <td style="color:#8b7d8b;font-size:14px;padding-top:6px;">Celkem</td>
+                <td align="right" style="color:#3a2e3a;font-size:16px;font-weight:800;padding-top:6px;">
+                  ${czk(order.total_czk)}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+      <p style="text-align:center;margin:22px 0 8px;">
+        <a href="${link}" style="display:inline-block;background:#ef5f8d;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 30px;border-radius:999px;">
+          📄 Otevřít ${proforma ? 'zálohovou fakturu' : 'fakturu'}
+        </a>
+      </p>
+      <p style="color:#8b7d8b;font-size:13px;line-height:1.6;text-align:center;margin-top:16px;">
+        Kdyby cokoli nesedělo, napište nám na
+        <a href="mailto:${NOTIFY}" style="color:#c9315e;">${NOTIFY}</a>.
+      </p>
+    `),
   })
 }

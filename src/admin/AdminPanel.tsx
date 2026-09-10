@@ -563,6 +563,9 @@ interface OrderRow {
   pickup_point_name?: string | null
   invoice_url?: string | null
   invoice_pdf?: string | null
+  /** 'proforma' = zálohová faktura čekající na úhradu · 'paid' = faktura */
+  invoice_status?: 'proforma' | 'paid' | null
+  invoice_sent_at?: string | null
 }
 
 const ORDER_STATUSES: Record<string, string> = {
@@ -606,25 +609,45 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
     void load()
   }, [load])
 
-  /** Issues a Stripe faktura for an order that was not paid by card. */
-  const makeInvoice = async (orderNumber: number) => {
+  /**
+   * Invoice actions. 'issue' creates the document (a zálohová faktura while
+   * the money is not in), 'settle' turns it into the paid faktura and mails
+   * it, 'send' just re-sends whatever exists.
+   */
+  const invoiceAction = async (
+    orderNumber: number,
+    action: 'issue' | 'settle' | 'send',
+  ) => {
     setInvoicing(orderNumber)
     try {
       const res = await fetch('/api/create-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderNumber }),
+        body: JSON.stringify({ orderNumber, action }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Nepodařilo se vystavit fakturu.')
+      if (!res.ok) throw new Error(data.error || 'Nepodařilo se zpracovat fakturu.')
       setOrders((os) =>
         os.map((o) =>
           o.order_number === orderNumber
-            ? { ...o, invoice_url: data.invoiceUrl, invoice_pdf: data.invoicePdf }
+            ? {
+                ...o,
+                invoice_url: data.invoiceUrl ?? o.invoice_url,
+                invoice_pdf: data.invoicePdf ?? o.invoice_pdf,
+                invoice_status: data.invoiceStatus ?? o.invoice_status,
+                invoice_sent_at:
+                  action === 'issue' ? o.invoice_sent_at : new Date().toISOString(),
+              }
             : o,
         ),
       )
-      notify('Faktura vystavena ✓')
+      notify(
+        action === 'settle'
+          ? 'Faktura označena jako zaplacená a odeslána ✓'
+          : action === 'send'
+            ? 'Odesláno zákazníkovi ✓'
+            : 'Zálohová faktura vystavena ✓',
+      )
     } catch (err) {
       notify('Chyba: ' + (err instanceof Error ? err.message : 'faktura'))
     }
@@ -636,15 +659,6 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
     if (error) notify('Chyba: ' + error.message)
     else {
       setOrders((os) => os.map((o) => (o.id === id ? { ...o, status } : o)))
-      // Money for a dobírka order has arrived → mark its faktura as uhrazená.
-      const row = orders.find((o) => o.id === id)
-      if (row && ['paid', 'shipped', 'done'].includes(status)) {
-        void fetch('/api/create-invoice', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderNumber: row.order_number, settle: true }),
-        }).catch(() => undefined)
-      }
       notify('Stav objednávky uložen ✓')
     }
   }
@@ -876,30 +890,66 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
                       </span>
                     )}
                   </p>
-                  <p>
-                    {o.invoice_pdf || o.invoice_url ? (
-                      <a
-                        className="admin__btn"
-                        href={o.invoice_pdf || o.invoice_url || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        📄 Faktura (PDF)
-                      </a>
-                    ) : ['new', 'paid', 'shipped', 'done'].includes(o.status) ? (
-                      <button
-                        className="admin__btn"
-                        disabled={invoicing === o.order_number}
-                        onClick={() => void makeInvoice(o.order_number)}
-                      >
-                        {invoicing === o.order_number ? 'Vystavuji…' : '🧾 Vystavit fakturu'}
-                      </button>
-                    ) : (
-                      <span className="admin__muted admin__small">
-                        Faktura se vystaví, jakmile bude objednávka potvrzená.
-                      </span>
-                    )}
-                  </p>
+                  {(() => {
+                    const link = o.invoice_pdf || o.invoice_url
+                    const proforma = o.invoice_status === 'proforma'
+                    const busy = invoicing === o.order_number
+                    const invoiceable = ['new', 'paid', 'shipped', 'done'].includes(o.status)
+                    if (!link && !invoiceable) {
+                      return (
+                        <p className="admin__muted admin__small">
+                          Faktura se vystaví, jakmile bude objednávka potvrzená.
+                        </p>
+                      )
+                    }
+                    return (
+                      <div className="admin__invoice-row">
+                        {link && (
+                          <a className="admin__btn" href={link} target="_blank" rel="noreferrer">
+                            📄 {proforma ? 'Zálohová faktura (PDF)' : 'Faktura (PDF)'}
+                          </a>
+                        )}
+                        {!link && (
+                          <button
+                            className="admin__btn"
+                            disabled={busy}
+                            onClick={() => void invoiceAction(o.order_number, 'issue')}
+                          >
+                            {busy ? 'Vystavuji…' : '🧾 Vystavit fakturu'}
+                          </button>
+                        )}
+                        {proforma && (
+                          <button
+                            className="admin__btn admin__btn--primary"
+                            disabled={busy}
+                            onClick={() => void invoiceAction(o.order_number, 'settle')}
+                          >
+                            {busy ? 'Odesílám…' : '✓ Zaplaceno — poslat fakturu'}
+                          </button>
+                        )}
+                        {link && !proforma && (
+                          <button
+                            className="admin__btn"
+                            disabled={busy}
+                            onClick={() => void invoiceAction(o.order_number, 'send')}
+                          >
+                            {busy ? 'Odesílám…' : '📧 Poslat zákazníkovi'}
+                          </button>
+                        )}
+                        {o.invoice_sent_at && (
+                          <span className="admin__muted admin__small">
+                            Odesláno {new Date(o.invoice_sent_at).toLocaleString('cs-CZ')}
+                          </span>
+                        )}
+                        {proforma && (
+                          <span className="admin__muted admin__small admin__invoice-hint">
+                            Zálohová faktura — zákazník ji může zaplatit online. Daňový doklad
+                            se pošle po kliknutí na „Zaplaceno".
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })()}
                   {o.tracking_number && (
                     <div className="admin__tracking-info">
                       <h4>Doprava</h4>

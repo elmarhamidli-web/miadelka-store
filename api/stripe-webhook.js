@@ -83,6 +83,9 @@ export default async function handler(req, res) {
               payment_ref: String(session.payment_intent || session.id),
               invoice_url: invoiceUrl,
               invoice_pdf: invoicePdf,
+              // Stripe Checkout issues a paid invoice, never a proforma.
+              invoice_status: invoiceUrl || invoicePdf ? 'paid' : null,
+              invoice_sent_at: invoiceUrl || invoicePdf ? new Date().toISOString() : null,
             }),
           },
         )

@@ -205,6 +205,7 @@ export default async function handler(req, res) {
         order_number: orderNumber,
         invoice_url: invoice.invoiceUrl ?? null,
         invoice_pdf: invoice.invoicePdf ?? null,
+        invoice_status: invoice.invoiceStatus ?? null,
       },
       paidByGift,
     )
