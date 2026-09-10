@@ -59,13 +59,14 @@ export default async function handler(req, res) {
     }
 
     const ids = [...new Set(items.map((i) => String(i.id)))]
-    const rows = await sbFetch(
-      `products?id=in.(${ids.map((id) => `"${id}"`).join(',')})&select=*`,
-    )
+    // These three do not depend on each other — one round trip instead of
+    // three noticeably shortens the wait on the last checkout step.
+    const [rows, activePromos, settingsRows] = await Promise.all([
+      sbFetch(`products?id=in.(${ids.map((id) => `"${id}"`).join(',')})&select=*`),
+      getActivePromotions(),
+      sbFetch(`site_settings?key=eq.shipping&select=value`),
+    ])
     const byId = Object.fromEntries(rows.map((r) => [r.id, r]))
-
-    // Seasonal promotions change the effective price server-side too.
-    const activePromos = await getActivePromotions()
 
     let subtotalCzk = 0
     const orderItems = []
@@ -118,7 +119,6 @@ export default async function handler(req, res) {
       orderItems.length > 0 &&
       orderItems.every((i) => i.is_gift_card && i.size !== 'physical')
 
-    const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
 
     // Shipping method + discounts — always validated against the DB.
@@ -182,11 +182,16 @@ export default async function handler(req, res) {
     if (!orderRes.ok) throw new Error('Order creation failed: ' + (await orderRes.text()))
     const orderNumber = await orderRes.json()
 
-    // Redeem the codes now — the order is definitely placed.
-    if (promo.discount)
-      await redeemDiscount(promo.discount.code, { orderNumber, amountCzk: promo.discountCzk })
-    if (promo.gift && promo.giftCzk > 0)
-      await redeemGiftCard(promo.gift.code, promo.giftCzk, { orderNumber })
+    // Redeem the codes now — the order is definitely placed. Two different
+    // codes never touch the same row, so they can go together.
+    await Promise.all([
+      promo.discount
+        ? redeemDiscount(promo.discount.code, { orderNumber, amountCzk: promo.discountCzk })
+        : null,
+      promo.gift && promo.giftCzk > 0
+        ? redeemGiftCard(promo.gift.code, promo.giftCzk, { orderNumber })
+        : null,
+    ])
 
     // Fully covered by a gift card → mark as paid right away.
     if (paidByGift) {
@@ -209,26 +214,26 @@ export default async function handler(req, res) {
     // (so nothing is lost and the printed card can be prepared) but stay
     // INACTIVE — unusable and unsent — until the money arrives. A voucher
     // covered by another voucher is already paid, so it goes live at once.
+    // Issuing the codes and issuing the faktura are independent of each other.
     const paidOrder = { ...orderPayload, order_number: orderNumber }
-    try {
-      await issueGiftCards(paidOrder, { active: paidByGift })
-    } catch (err) {
-      console.error(`Gift voucher issue failed for order #${orderNumber}:`, err)
-    }
-
-    // Cash on delivery / bank transfer never touches Stripe Checkout, so the
-    // faktura is issued here — before the e-mails, so the customer gets the
-    // PDF link in the confirmation. A failure must never lose the order.
-    let invoice = {}
-    try {
-      const { issueInvoiceForOrder } = await import('./create-invoice.js')
-      invoice = await issueInvoiceForOrder(
-        { ...paidOrder, status: paidByGift ? 'paid' : 'new' },
-        { vatRate },
-      )
-    } catch (err) {
-      console.error(`Invoice for order #${orderNumber} failed:`, err)
-    }
+    const [giftCards, invoiceResult] = await Promise.all([
+      issueGiftCards(paidOrder, { active: paidByGift }).catch((err) => {
+        console.error(`Gift voucher issue failed for order #${orderNumber}:`, err)
+        return []
+      }),
+      import('./create-invoice.js')
+        .then(({ issueInvoiceForOrder }) =>
+          issueInvoiceForOrder(
+            { ...paidOrder, status: paidByGift ? 'paid' : 'new' },
+            { vatRate },
+          ),
+        )
+        .catch((err) => {
+          console.error(`Invoice for order #${orderNumber} failed:`, err)
+          return {}
+        }),
+    ])
+    const invoice = invoiceResult || {}
 
     const mailOrder = {
       ...paidOrder,
@@ -238,11 +243,11 @@ export default async function handler(req, res) {
     }
     await sendOrderEmails(mailOrder, paidByGift)
 
-    // An order already settled by another voucher gets its codes right away.
-    if (paidByGift) {
+    // An order already settled by another voucher gets its codes right away —
+    // they were created active a moment ago, so just mail them.
+    if (paidByGift && giftCards.length > 0) {
       try {
-        const cards = await issueGiftCards(paidOrder, { active: true })
-        if (cards.length > 0) await sendGiftCardEmail(mailOrder, cards)
+        await sendGiftCardEmail(mailOrder, giftCards)
       } catch (err) {
         console.error(`Gift voucher e-mail failed for order #${orderNumber}:`, err)
       }

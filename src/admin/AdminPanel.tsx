@@ -594,20 +594,40 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
   const [filter, setFilter] = useState<'active' | 'pending' | 'cancelled' | 'all'>('active')
   const [loading, setLoading] = useState(true)
   const [invoicing, setInvoicing] = useState<number | null>(null)
+  // The list is paged: a full order row carries its whole items JSON, so
+  // pulling hundreds of them at once is what made this tab feel slow.
+  const PAGE = 60
+  const [loadedTo, setLoadedTo] = useState(PAGE)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [statuses, setStatuses] = useState<string[]>([])
 
-  const load = useCallback(async () => {
-    const { data, error } = await supabase!
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200)
-    if (!error && data) setOrders(data as OrderRow[])
+  const load = useCallback(async (limit = PAGE) => {
+    // Statuses come as a separate, tiny projection so the filter badges show
+    // the real totals even though the list itself is paged.
+    const [page, all] = await Promise.all([
+      supabase!
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit),
+      supabase!.from('orders').select('status'),
+    ])
+    if (!page.error && page.data) setOrders(page.data as OrderRow[])
+    if (!all.error && all.data) setStatuses((all.data as { status: string }[]).map((r) => r.status))
     setLoading(false)
   }, [])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    const next = loadedTo + PAGE
+    await load(next)
+    setLoadedTo(next)
+    setLoadingMore(false)
+  }
 
   /**
    * Invoice actions. 'issue' creates the document (a zálohová faktura while
@@ -731,12 +751,15 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
 
   if (loading) return <main className="admin__main"><p className="admin__muted">Načítání…</p></main>
 
+  // Counted from every order, not just the loaded page.
+  const pool = statuses.length > 0 ? statuses : orders.map((o) => o.status)
   const counts = {
-    active: orders.filter((o) => ACTIVE_STATUSES.includes(o.status)).length,
-    pending: orders.filter((o) => o.status === 'pending').length,
-    cancelled: orders.filter((o) => o.status === 'cancelled').length,
-    all: orders.length,
+    active: pool.filter((s) => ACTIVE_STATUSES.includes(s)).length,
+    pending: pool.filter((s) => s === 'pending').length,
+    cancelled: pool.filter((s) => s === 'cancelled').length,
+    all: pool.length,
   }
+  const hasMore = orders.length < counts.all
   const shown = orders.filter((o) =>
     filter === 'all'
       ? true
@@ -990,6 +1013,14 @@ function OrdersView({ notify }: { notify: (m: string) => void }) {
           </div>
         ))}
       </div>
+
+      {hasMore && (
+        <div className="admin__loadmore">
+          <button className="admin__btn" disabled={loadingMore} onClick={() => void loadMore()}>
+            {loadingMore ? 'Načítám…' : `Načíst starší objednávky (${counts.all - orders.length})`}
+          </button>
+        </div>
+      )}
 
       {fulfillId && (
         <FulfillModal

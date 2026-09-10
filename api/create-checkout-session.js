@@ -87,28 +87,38 @@ const vatRateCache = new Map()
  */
 async function getVatRateId(percent) {
   const key = String(percent)
-  if (vatRateCache.has(key)) return vatRateCache.get(key)
-  const marker = `los_vat_${key}`
-  try {
-    const list = await stripe.taxRates.list({ active: true, limit: 100 })
-    const found = list.data.find((r) => r.metadata?.los_key === marker)
-    if (found) {
-      vatRateCache.set(key, found.id)
-      return found.id
+  const cached = vatRateCache.get(key)
+  if (cached) return cached
+
+  const pending = (async () => {
+    const marker = `los_vat_${key}`
+    try {
+      const list = await stripe.taxRates.list({ active: true, limit: 100 })
+      const found = list.data.find((r) => r.metadata?.los_key === marker)
+      if (found) return found.id
+    } catch (err) {
+      console.error('Tax rate lookup failed:', err.message)
     }
+    const created = await stripe.taxRates.create({
+      display_name: 'DPH',
+      description: `DPH ${percent} %`,
+      percentage: Number(percent),
+      inclusive: true,
+      country: 'CZ',
+      metadata: { los_key: marker },
+    })
+    return created.id
+  })()
+
+  // Store the promise so parallel callers wait for the same lookup instead of
+  // each creating their own duplicate tax rate.
+  vatRateCache.set(key, pending)
+  try {
+    return await pending
   } catch (err) {
-    console.error('Tax rate lookup failed:', err.message)
+    vatRateCache.delete(key)
+    throw err
   }
-  const created = await stripe.taxRates.create({
-    display_name: 'DPH',
-    description: `DPH ${percent} %`,
-    percentage: Number(percent),
-    inclusive: true,
-    country: 'CZ',
-    metadata: { los_key: marker },
-  })
-  vatRateCache.set(key, created.id)
-  return created.id
 }
 
 /**
@@ -256,13 +266,14 @@ export default async function handler(req, res) {
 
     // 1. Load authoritative product data from the database.
     const ids = [...new Set(items.map((i) => String(i.id)))]
-    const rows = await sbFetch(
-      `products?id=in.(${ids.map((id) => `"${id}"`).join(',')})&select=*`,
-    )
+    // Independent of each other — fetching them together shaves a couple of
+    // hundred milliseconds off the "Zaplatit kartou" click.
+    const [rows, activePromos, settingsRows] = await Promise.all([
+      sbFetch(`products?id=in.(${ids.map((id) => `"${id}"`).join(',')})&select=*`),
+      getActivePromotions(),
+      sbFetch(`site_settings?key=eq.shipping&select=value`),
+    ])
     const byId = Object.fromEntries(rows.map((r) => [r.id, r]))
-
-    // Seasonal promotions change the effective price server-side too.
-    const activePromos = await getActivePromotions()
 
     let subtotalCzk = 0
     const orderItems = []
@@ -310,7 +321,6 @@ export default async function handler(req, res) {
       orderItems.every((i) => i.is_gift_card && i.size !== 'physical')
 
     // 2. Shipping from settings + discount/gift card validation.
-    const settingsRows = await sbFetch(`site_settings?key=eq.shipping&select=value`)
     const shippingCfg = settingsRows[0]?.value || { shipping_czk: 90, free_over_czk: 2000 }
     // DPH is opt-in (the shop may not be a VAT payer) and the rate is editable
     // in the admin — never hard-coded into the invoice.
@@ -441,28 +451,36 @@ export default async function handler(req, res) {
       return
     }
 
-    // 4. Build line items with synced Stripe products.
-    const vatRateId = vatRate > 0 ? await getVatRateId(vatRate) : null
+    // 4. Build line items with synced Stripe products. The tax rate, the
+    //    customer and every product sync are independent Stripe calls, so they
+    //    all go out at once instead of one after another.
+    const origin = req.headers.origin || SITE
+    const [vatRateId, stripeCustomerId, productIds] = await Promise.all([
+      vatRate > 0 ? getVatRateId(vatRate) : null,
+      getOrCreateCustomer(customer.email, customer.name),
+      Promise.all(
+        [...new Set(orderItems.map((i) => i.id))].map(async (id) => [
+          id,
+          await getOrCreateStripeProduct(byId[id]),
+        ]),
+      ),
+    ])
     const taxRates = vatRateId ? [vatRateId] : undefined
+    const stripeProductById = Object.fromEntries(productIds)
 
-    const lineItems = []
-    for (const item of orderItems) {
-      const row = byId[item.id]
-      const stripeProductId = await getOrCreateStripeProduct(row)
-      lineItems.push({
-        quantity: item.qty,
-        tax_rates: taxRates,
-        price_data: {
-          currency: 'czk',
-          unit_amount: Math.round(item.price_czk * 100),
-          product: stripeProductId,
-          // Prices on the site are final consumer prices: whatever DPH applies
-          // is already contained in the amount, never added on top. This is
-          // what makes a 500 Kč voucher cost exactly 500 Kč on the faktura.
-          tax_behavior: 'inclusive',
-        },
-      })
-    }
+    const lineItems = orderItems.map((item) => ({
+      quantity: item.qty,
+      tax_rates: taxRates,
+      price_data: {
+        currency: 'czk',
+        unit_amount: Math.round(item.price_czk * 100),
+        product: stripeProductById[item.id],
+        // Prices on the site are final consumer prices: whatever DPH applies
+        // is already contained in the amount, never added on top. This is
+        // what makes a 500 Kč voucher cost exactly 500 Kč on the faktura.
+        tax_behavior: 'inclusive',
+      },
+    }))
 
     // Postage rides along as a normal line item instead of a Stripe shipping
     // option. Two reasons: it can carry the DPH rate (a shipping_rate cannot),
@@ -520,8 +538,6 @@ export default async function handler(req, res) {
     }
 
     // 6. Create the Checkout Session.
-    const origin = req.headers.origin || SITE
-    const stripeCustomerId = await getOrCreateCustomer(customer.email, customer.name)
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items: lineItems,
