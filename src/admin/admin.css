@@ -1117,46 +1117,19 @@
   color: #0f172a;
 }
 
-/* ---- Gift-voucher switch in the product form ----------------------- */
-.admin__giftswitch {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin: 4px 0 18px;
-  padding: 14px 16px;
-  border: 1px solid #e2e8f0;
+/* ---- Gift-voucher hint in the product form ------------------------- */
+.admin__giftnote {
+  margin: 0 0 16px;
+  padding: 12px 14px;
   border-radius: 12px;
-  background: #fff;
-  cursor: pointer;
-  transition: border-color 160ms ease-out, background 160ms ease-out;
-}
-.admin__giftswitch:hover {
-  border-color: #cbd5e1;
-}
-.admin__giftswitch.is-on {
-  border-color: #fbbf24;
+  border: 1px solid #fbbf24;
   background: linear-gradient(135deg, #fffbeb 0%, #fef3f2 100%);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: #78350f;
 }
-.admin__giftswitch input {
-  margin-top: 3px;
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  accent-color: #f59e0b;
-}
-.admin__giftswitch span {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.admin__giftswitch strong {
-  font-size: 0.95rem;
+.admin__giftnote strong {
   color: #0f172a;
-}
-.admin__giftswitch small {
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: #64748b;
 }
 
 /* ---- Order totals with discounts and VAT --------------------------- */

@@ -43,7 +43,24 @@ begin
 end
 $$;
 
--- 3) Kontrola
+-- 3) Osobní odběr rovnou přidáme, ať ho nemusí nikdo zakládat ručně.
+--    Cena 0 Kč, bez přepravce. Vypnout nebo přejmenovat jde v administraci.
+insert into public.shipping_methods
+  (code, name_cs, name_en, name_uk, note_cs, price_czk, free_over_czk,
+   kind, carrier, cod_allowed, active, sort)
+select
+  'osobni-odber',
+  'Osobní odběr',
+  'Personal collection',
+  'Самовивіз',
+  'Vyzvednete si u nás — zdarma',
+  0, 0, 'personal', null, true, true,
+  coalesce((select max(sort) from public.shipping_methods), 0) + 10
+where not exists (
+  select 1 from public.shipping_methods where kind = 'personal'
+);
+
+-- 4) Kontrola
 select code, name_cs, kind, price_czk, active
   from public.shipping_methods
  order by sort;

@@ -3535,6 +3535,9 @@ function ProductForm({
   const set = <K extends keyof ProductRow>(key: K, value: ProductRow[K]) =>
     setR((prev) => ({ ...prev, [key]: value }))
 
+  /** The category IS the switch: vouchers live in the vouchers category. */
+  const isGift = r.category === 'gift-cards'
+
   /**
    * The "Dárkové poukazy" category IS the voucher switch: picking it turns the
    * form into a voucher form and clears everything a voucher has no use for.
@@ -3656,16 +3659,17 @@ function ProductForm({
     }
     setBusy(true)
     const { variants, sizes } = buildStock()
-    const tracked = !r.is_gift_card && Object.keys(variants).length > 0
+    const tracked = !isGift && Object.keys(variants).length > 0
     const record: ProductRow = {
       ...r,
       id: r.id || slugify(r.name_cs),
+      is_gift_card: isGift,
       // Sizes typed into the stock table are added to the product's size list
       // automatically, so the owner never has to fill them in twice.
-      sizes: r.is_gift_card ? [] : (tracked ? sizes : r.sizes).filter(Boolean),
-      ages: r.is_gift_card ? [] : r.ages.filter(Boolean),
+      sizes: isGift ? [] : (tracked ? sizes : r.sizes).filter(Boolean),
+      ages: isGift ? [] : r.ages.filter(Boolean),
       stock_variants: tracked ? variants : {},
-      stock_qty: r.is_gift_card
+      stock_qty: isGift
         ? null
         : tracked
           ? Object.values(variants).reduce((a, b) => a + b, 0)
@@ -3693,6 +3697,13 @@ function ProductForm({
 
         {/* A voucher is a product too — same photos, but no sizes or stock. */}
         <h3>Základní údaje</h3>
+        {isGift && (
+          <p className="admin__giftnote">
+            🎁 <strong>Dárkový poukaz.</strong> Cena je hodnota poukazu — částka je konečná,
+            včetně DPH. Po zaplacení se zákazníkovi vygeneruje kód na tuto částku a pošle se
+            mu e-mailem. Sklad, velikosti ani materiál se u poukazu nesledují.
+          </p>
+        )}
         <div className="admin__grid">
           <label>
             Název (česky) *
@@ -3706,7 +3717,7 @@ function ProductForm({
               ))}
             </select>
           </label>
-          {r.is_gift_card && (
+          {isGift && (
             <label>
               Způsob doručení poukazu
               <select
@@ -3722,7 +3733,7 @@ function ProductForm({
             </label>
           )}
           <label>
-            {r.is_gift_card ? 'Hodnota poukazu (Kč, včetně DPH) *' : 'Cena (Kč) *'}
+            {isGift ? 'Hodnota poukazu (Kč, včetně DPH) *' : 'Cena (Kč) *'}
             <input
               type="number"
               min={1}
@@ -3731,7 +3742,7 @@ function ProductForm({
               required
             />
           </label>
-          {!r.is_gift_card && (
+          {!isGift && (
             <label>
               Původní cena (Kč, pro slevu)
               <input
@@ -3741,7 +3752,7 @@ function ProductForm({
               />
             </label>
           )}
-          {!r.is_gift_card && (
+          {!isGift && (
             <label>
               Velikosti (oddělené čárkou)
               <input
@@ -3751,7 +3762,7 @@ function ProductForm({
               />
             </label>
           )}
-          {!r.is_gift_card && (
+          {!isGift && (
             <label>
               Věk (filtr; oddělený čárkou)
               <input
@@ -3761,7 +3772,7 @@ function ProductForm({
               />
             </label>
           )}
-          {!r.is_gift_card && (
+          {!isGift && (
             <label>
               Štítek
               <select value={r.badge ?? ''} onChange={(e) => set('badge', e.target.value || null)}>
@@ -3771,13 +3782,13 @@ function ProductForm({
               </select>
             </label>
           )}
-          {!r.is_gift_card && (
+          {!isGift && (
             <label>
               Emoji (záložní obrázek)
               <input value={r.emoji} onChange={(e) => set('emoji', e.target.value)} />
             </label>
           )}
-          {!r.is_gift_card && (
+          {!isGift && (
             <label>
               Barva pozadí karty
               <select
@@ -3794,7 +3805,7 @@ function ProductForm({
             Pořadí (nižší = výš)
             <input type="number" value={r.sort} onChange={(e) => set('sort', Number(e.target.value))} />
           </label>
-          {!r.is_gift_card && (
+          {!isGift && (
             <label>
               Počet kusů skladem
               <input
@@ -3810,7 +3821,7 @@ function ProductForm({
           )}
         </div>
 
-        {!r.is_gift_card && (
+        {!isGift && (
         <div className="admin__season-row">
           <span>Sezóny (pro sezónní akce):</span>
           {(
@@ -3842,7 +3853,7 @@ function ProductForm({
 
         <div className="admin__flags">
           {(
-            (r.is_gift_card
+            (isGift
               ? [
                   ['in_stock', 'V prodeji'],
                   ['hidden', 'Skrýt z webu'],
@@ -3877,7 +3888,7 @@ function ProductForm({
             required
           />
         </label>
-        {!r.is_gift_card && (
+        {!isGift && (
           <label>
             Materiál (česky)
             <input value={r.material_cs ?? ''} onChange={(e) => set('material_cs', e.target.value)} />
@@ -3892,7 +3903,7 @@ function ProductForm({
           </div>
           <label>Popis (anglicky)<textarea rows={3} value={r.desc_en ?? ''} onChange={(e) => set('desc_en', e.target.value || null)} /></label>
           <label>Popis (ukrajinsky)<textarea rows={3} value={r.desc_uk ?? ''} onChange={(e) => set('desc_uk', e.target.value || null)} /></label>
-          {!r.is_gift_card && (
+          {!isGift && (
           <div className="admin__grid">
             <label>Materiál (anglicky)<input value={r.material_en ?? ''} onChange={(e) => set('material_en', e.target.value || null)} /></label>
             <label>Materiál (ukrajinsky)<input value={r.material_uk ?? ''} onChange={(e) => set('material_uk', e.target.value || null)} /></label>
@@ -3900,16 +3911,16 @@ function ProductForm({
           )}
         </details>
 
-        <h3>{r.is_gift_card ? 'Fotka poukazu' : 'Barevné varianty a fotky'}</h3>
-        {r.is_gift_card && (
+        <h3>{isGift ? 'Fotka poukazu' : 'Barevné varianty a fotky'}</h3>
+        {isGift && (
           <p className="admin__muted admin__small">
             Nahrajte obrázek poukazu — ukáže se zákazníkovi na webu i v e-mailu s kódem.
           </p>
         )}
-        {r.colors.map((c, i) => (
+        {(isGift ? r.colors.slice(0, 1) : r.colors).map((c, i) => (
           <div className="admin__color" key={i}>
             <div className="admin__color-head">
-              {!r.is_gift_card && (
+              {!isGift && (
                 <input
                   className="admin__color-name"
                   value={c.name}
@@ -3917,7 +3928,7 @@ function ProductForm({
                   placeholder="Název barvy (např. Pink)"
                 />
               )}
-              {!r.is_gift_card && (
+              {!isGift && (
                 <input
                   type="color"
                   value={c.hex}
@@ -3935,7 +3946,7 @@ function ProductForm({
                   onChange={(e) => e.target.files && void uploadImages(i, e.target.files)}
                 />
               </label>
-              {r.colors.length > 1 && !r.is_gift_card && (
+              {r.colors.length > 1 && !isGift && (
                 <button
                   type="button"
                   className="admin__btn admin__btn--small admin__btn--danger"
@@ -3971,7 +3982,7 @@ function ProductForm({
             </div>
 
             {/* -------- stock for this colour, size by size -------- */}
-            {!r.is_gift_card && (
+            {!isGift && (
             <div className="admin__color-stock">
               <div className="admin__color-stock-head">
                 <strong>Sklad této barvy</strong>
@@ -4033,14 +4044,14 @@ function ProductForm({
             )}
           </div>
         ))}
-        {!r.is_gift_card && (
+        {!isGift && (
           <p className="admin__muted admin__small">
             Velikosti si u každé barvy napíšete sami — do produktu se doplní automaticky. Celkový
             stav skladu se spočítá jako součet všech barev a velikostí. Vyprodaná kombinace se na
             webu zákazníkovi zašedne a nepůjde vybrat.
           </p>
         )}
-        {!r.is_gift_card && (
+        {!isGift && (
         <button
           type="button"
           className="admin__btn"
